@@ -25,6 +25,31 @@
 <script src="https://unpkg.com/react-is@18/umd/react-is.production.min.js"></script>
 <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+<!-- Firebase (synchronizacja danych między urządzeniami) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxqNDBqX1BeTL01V6UMWg-dCb8x6gHTyM",
+      authDomain: "szczotka-i-zmiotka.firebaseapp.com",
+      projectId: "szczotka-i-zmiotka",
+      storageBucket: "szczotka-i-zmiotka.firebasestorage.app",
+      messagingSenderId: "743873175128",
+      appId: "1:743873175128:web:8d56b9d69a756d5e4f342d"
+    };
+    try {
+      firebase.initializeApp(firebaseConfig);
+      window.firebaseDb = firebase.firestore();
+      window.firebaseDb.enablePersistence({ synchronizeTabs: true }).catch(function(){});
+    } catch (e) {
+      console.error("Firebase init failed, falling back to local storage only:", e);
+      window.firebaseDb = null;
+    }
+
+</script>
+
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; overscroll-behavior-y: none; }
@@ -219,28 +244,55 @@ function App() {
   const [moveConflict, setMoveConflict] = useState(null);
   const [saveState, setSaveState] = useState("idle");
 
-  // load from storage
+  // load from Firestore (real-time sync across devices) with localStorage fallback
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
-    } catch (e) {
-      setEntries(SEED_ENTRIES);
+    if (!window.firebaseDb) {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
+      } catch (e) {
+        setEntries(SEED_ENTRIES);
+      }
+      return;
     }
+    const docRef = window.firebaseDb.collection("app-data").doc("entries");
+    const unsub = docRef.onSnapshot(
+      (snap) => {
+        if (snap.exists) {
+          setEntries(snap.data().items || []);
+        } else {
+          docRef.set({ items: SEED_ENTRIES }).catch(() => {});
+          setEntries(SEED_ENTRIES);
+        }
+      },
+      () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
+        } catch (e) {
+          setEntries(SEED_ENTRIES);
+        }
+      }
+    );
+    return () => unsub();
   }, []);
 
-  // persist on change
+  // persist on change — Firestore (synced) + localStorage (local backup)
   useEffect(() => {
     if (entries === null) return;
     setSaveState("saving");
     const t = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      } catch (e) {}
+      if (window.firebaseDb) {
+        window.firebaseDb.collection("app-data").doc("entries").set({ items: entries })
+          .then(() => setSaveState("saved"))
+          .catch(() => setSaveState("error"));
+      } else {
         setSaveState("saved");
-      } catch (e) {
-        setSaveState("error");
       }
-    }, 250);
+    }, 400);
     return () => clearTimeout(t);
   }, [entries]);
 
