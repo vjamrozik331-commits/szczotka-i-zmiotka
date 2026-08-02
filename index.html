@@ -105,6 +105,8 @@ const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6
 const Percent = (p) => <Icon {...p}><path d="M19 5L5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></Icon>;
 const RotateCcw = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></Icon>;
 const Check = (p) => <Icon {...p}><path d="M20 6L9 17l-5-5"/></Icon>;
+const ChevronLeft = (p) => <Icon {...p}><path d="M15 18l-6-6 6-6"/></Icon>;
+const ChevronRight = (p) => <Icon {...p}><path d="M9 18l6-6-6-6"/></Icon>;
 const CalendarClock = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15.5" r="3.2"/><path d="M12 14.2v1.3l.9.7"/></Icon>;
 const AlertTriangle = (p) => <Icon {...p}><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></Icon>;
 const CheckCircle2 = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></Icon>;
@@ -120,7 +122,7 @@ const SEED_ENTRIES = [{"id":1,"data":"2026-01-01","klient":"","adres":"","opisUs
 
 const MONTH_NAMES = ["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
 const WEEKDAY_LETTERS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
-const YEAR = 2026;
+const DEFAULT_YEAR = new Date().getFullYear();
 
 const CATEGORIES = ["Chemia i materiały", "Sprzęt", "Paliwo", "Marketing", "Inne"];
 const CATEGORY_COLORS = {
@@ -233,6 +235,7 @@ const emptyForm = {
 function App() {
   const [entries, setEntries] = useState(null);
   const [freeDays, setFreeDays] = useState([]);
+  const [year, setYear] = useState(DEFAULT_YEAR);
   const [activeTab, setActiveTab] = useState(new Date().getMonth() < 12 ? new Date().getMonth() : 0);
   const [view, setView] = useState("month"); // "month" | "summary" | "upcoming"
   const [showForm, setShowForm] = useState(false);
@@ -242,7 +245,6 @@ function App() {
   const [search, setSearch] = useState("");
   const [searchScope, setSearchScope] = useState("month"); // "month" | "year"
   const [resetPanelOpen, setResetPanelOpen] = useState(false);
-  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [resetFromDateValue, setResetFromDateValue] = useState("");
   const [confirmResetFromDateOpen, setConfirmResetFromDateOpen] = useState(false);
   const [conflictInfo, setConflictInfo] = useState(null);
@@ -276,6 +278,7 @@ function App() {
           setEntries(SEED_ENTRIES);
           setFreeDays([]);
         }
+        setSaveState("saved");
       },
       () => {
         try {
@@ -291,33 +294,31 @@ function App() {
     return () => unsub();
   }, []);
 
-  // persist on change — Firestore (synced) + localStorage (local backup)
-  useEffect(() => {
-    if (entries === null) return;
-    setSaveState("saving");
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-        localStorage.setItem(STORAGE_KEY_FREE, JSON.stringify(freeDays));
-      } catch (e) {}
-      if (window.firebaseDb) {
-        window.firebaseDb.collection("app-data").doc("entries").set({ items: entries, freeDays: freeDays })
-          .then(() => setSaveState("saved"))
-          .catch(() => setSaveState("error"));
-      } else {
-        setSaveState("saved");
-      }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [entries, freeDays]);
+  // Explicit sync — called only from user-initiated mutations below, never from the
+  // Firestore listener itself. This is what prevents a device that just loaded a
+  // (possibly momentarily stale) snapshot from echoing it back and clobbering a
+  // newer write made from another device in the meantime.
+  function syncToFirestore(nextEntries, nextFreeDays) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextEntries));
+      localStorage.setItem(STORAGE_KEY_FREE, JSON.stringify(nextFreeDays));
+    } catch (e) {}
+    if (window.firebaseDb) {
+      setSaveState("saving");
+      window.firebaseDb.collection("app-data").doc("entries").set({ items: nextEntries, freeDays: nextFreeDays })
+        .then(() => setSaveState("saved"))
+        .catch(() => setSaveState("error"));
+    }
+  }
+
 
   const isYearSearch = search.trim() !== "" && searchScope === "year";
 
   const monthEntries = useMemo(() => {
     if (!entries) return [];
     const base = isYearSearch
-      ? entries.slice()
-      : entries.filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab);
+      ? entries.filter((e) => e.data && new Date(e.data + "T00:00:00").getFullYear() === year)
+      : entries.filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year);
     return base
       .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : a.id - b.id))
       .filter((e) => {
@@ -325,10 +326,10 @@ function App() {
         const s = search.toLowerCase();
         return (e.klient || "").toLowerCase().includes(s) || (e.adres || "").toLowerCase().includes(s);
       });
-  }, [entries, activeTab, search, isYearSearch]);
+  }, [entries, activeTab, year, search, isYearSearch]);
 
   const monthSummary = useMemo(() => {
-    const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab);
+    const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year);
     const done = all.filter(isRealized);
     const godziny = done.reduce((s, e) => s + (Number(e.godziny) || 0), 0);
     const zarobki = done.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
@@ -341,11 +342,11 @@ function App() {
       stawka: godziny > 0 ? zarobki / godziny : 0,
       zaplanowaneLiczba: planned.length, zaplanowaneZarobki,
     };
-  }, [entries, activeTab]);
+  }, [entries, activeTab, year]);
 
   const yearData = useMemo(() => {
     const months = MONTH_NAMES.map((name, idx) => {
-      const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === idx).filter(isRealized);
+      const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === idx && new Date(e.data + "T00:00:00").getFullYear() === year).filter(isRealized);
       const godziny = all.reduce((s, e) => s + (Number(e.godziny) || 0), 0);
       const zarobki = all.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
       const wydatki = all.reduce((s, e) => s + (Number(e.wydatki) || 0), 0);
@@ -361,8 +362,10 @@ function App() {
     const totalGodziny = months.reduce((s, m) => s + m.godziny, 0);
     const totalZlecenia = months.reduce((s, m) => s + m.liczbaZlecen, 0);
 
+    const inYear = (e) => e.data && new Date(e.data + "T00:00:00").getFullYear() === year;
+
     const catMap = {};
-    (entries || []).filter(isRealized).forEach((e) => {
+    (entries || []).filter(isRealized).filter(inYear).forEach((e) => {
       if (Number(e.wydatki) > 0) {
         const cat = e.kategoria || "Inne";
         catMap[cat] = (catMap[cat] || 0) + Number(e.wydatki);
@@ -371,7 +374,7 @@ function App() {
     const categories = CATEGORIES.map((c) => ({ name: c, value: Math.round((catMap[c] || 0) * 100) / 100 })).filter((c) => c.value > 0);
 
     const clientMap = {};
-    (entries || []).filter(isRealized).forEach((e) => {
+    (entries || []).filter(isRealized).filter(inYear).forEach((e) => {
       if (e.klient && e.klient.trim()) {
         if (!clientMap[e.klient]) clientMap[e.klient] = { klient: e.klient, zarobki: 0, liczba: 0 };
         clientMap[e.klient].zarobki += Number(e.zarobki) || 0;
@@ -380,7 +383,7 @@ function App() {
     });
     const topClients = Object.values(clientMap).sort((a, b) => b.zarobki - a.zarobki).slice(0, 10);
 
-    const plannedAll = (entries || []).filter((e) => e.statusZlecenia === "Zaplanowane");
+    const plannedAll = (entries || []).filter((e) => e.statusZlecenia === "Zaplanowane").filter(inYear);
     const zaplanowaneZarobki = plannedAll.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
 
     return {
@@ -391,7 +394,7 @@ function App() {
       categories, topClients,
       zaplanowaneLiczba: plannedAll.length, zaplanowaneZarobki,
     };
-  }, [entries]);
+  }, [entries, year]);
 
   const upcomingData = useMemo(() => {
     const all = entries || [];
@@ -410,19 +413,19 @@ function App() {
   }, [entries]);
 
   const calendarCells = useMemo(() => {
-    const first = new Date(YEAR, activeTab, 1);
-    const daysInMonth = new Date(YEAR, activeTab + 1, 0).getDate();
+    const first = new Date(year, activeTab, 1);
+    const daysInMonth = new Date(year, activeTab + 1, 0).getDate();
     const startOffset = (first.getDay() + 6) % 7;
     const cells = [];
     for (let i = 0; i < startOffset; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${YEAR}-${String(activeTab + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const dateStr = `${year}-${String(activeTab + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const dayEntries = monthEntriesForCalendar(entries, dateStr);
       const freeDay = freeDays.find((f) => f.date === dateStr) || null;
       cells.push({ day: d, dateStr, entries: dayEntries, freeDay });
     }
     return cells;
-  }, [entries, activeTab, freeDays]);
+  }, [entries, activeTab, year, freeDays]);
 
   function monthEntriesForCalendar(entries, dateStr) {
     return (entries || []).filter((e) => e.data === dateStr);
@@ -431,18 +434,18 @@ function App() {
   const openAddClientForm = useCallback((dateStr) => {
     setEditingId(null);
     setFormType("klient");
-    const d = dateStr || `${YEAR}-${String(activeTab + 1).padStart(2, "0")}-01`;
+    const d = dateStr || `${year}-${String(activeTab + 1).padStart(2, "0")}-01`;
     setForm({ ...emptyForm, data: d, statusZlecenia: defaultOrderStatus(d) });
     setShowForm(true);
-  }, [activeTab]);
+  }, [activeTab, year]);
 
   const openAddPurchaseForm = useCallback((dateStr) => {
     setEditingId(null);
     setFormType("zakup");
-    const d = dateStr || `${YEAR}-${String(activeTab + 1).padStart(2, "0")}-01`;
+    const d = dateStr || `${year}-${String(activeTab + 1).padStart(2, "0")}-01`;
     setForm({ ...emptyForm, data: d, opisUslugi: "", statusZlecenia: "Wykonane" });
     setShowForm(true);
-  }, [activeTab]);
+  }, [activeTab, year]);
 
   const openEditForm = useCallback((entry) => {
     setEditingId(entry.id);
@@ -496,13 +499,15 @@ function App() {
   }
 
   function commitPayload(payload) {
-    setEntries((prev) => {
-      if (editingId) {
-        return prev.map((e) => (e.id === editingId ? { ...payload, id: editingId } : e));
-      }
-      const nextId = prev.length ? Math.max(...prev.map((e) => e.id)) + 1 : 1;
-      return [...prev, { ...payload, id: nextId }];
-    });
+    let next;
+    if (editingId) {
+      next = entries.map((e) => (e.id === editingId ? { ...payload, id: editingId } : e));
+    } else {
+      const nextId = entries.length ? Math.max(...entries.map((e) => e.id)) + 1 : 1;
+      next = [...entries, { ...payload, id: nextId }];
+    }
+    setEntries(next);
+    syncToFirestore(next, freeDays);
     setShowForm(false);
   }
 
@@ -525,11 +530,15 @@ function App() {
   }
 
   function deleteEntry(id) {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
+    const next = entries.filter((e) => e.id !== id);
+    setEntries(next);
+    syncToFirestore(next, freeDays);
   }
 
   function setEntryStatus(id, status) {
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, statusZlecenia: status } : e)));
+    const next = entries.map((e) => (e.id === id ? { ...e, statusZlecenia: status } : e));
+    setEntries(next);
+    syncToFirestore(next, freeDays);
   }
 
   function openMove(entry) {
@@ -548,22 +557,20 @@ function App() {
         return;
       }
     }
-    setEntries((prev) => prev.map((e) => (e.id === moveInfo.id ? { ...e, data: moveInfo.newDate, godzinaStart: moveInfo.newTime } : e)));
+    const next = entries.map((e) => (e.id === moveInfo.id ? { ...e, data: moveInfo.newDate, godzinaStart: moveInfo.newTime } : e));
+    setEntries(next);
+    syncToFirestore(next, freeDays);
     setMoveInfo(null);
     setMoveConflict(null);
   }
 
-  function resetData() {
-    setEntries(SEED_ENTRIES);
-    setFreeDays([]);
-    setConfirmResetOpen(false);
-    setResetPanelOpen(false);
-  }
-
   function resetFromDate() {
     if (!resetFromDateValue) return;
-    setEntries((prev) => prev.filter((e) => !e.data || e.data < resetFromDateValue));
-    setFreeDays((prev) => prev.filter((d) => d.date < resetFromDateValue));
+    const nextEntries = entries.filter((e) => !e.data || e.data < resetFromDateValue);
+    const nextFree = freeDays.filter((d) => d.date < resetFromDateValue);
+    setEntries(nextEntries);
+    setFreeDays(nextFree);
+    syncToFirestore(nextEntries, nextFree);
     setConfirmResetFromDateOpen(false);
     setResetPanelOpen(false);
     setResetFromDateValue("");
@@ -585,21 +592,22 @@ function App() {
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       days.push(ds);
     }
-    setFreeDays((prev) => {
-      const existing = new Set(prev.map((f) => f.date));
-      const next = [...prev];
-      days.forEach((ds) => {
-        if (!existing.has(ds)) {
-          next.push({ id: Date.now() + Math.random(), date: ds, opis: freeDayForm.opis.trim() });
-        }
-      });
-      return next;
+    const existing = new Set(freeDays.map((f) => f.date));
+    const next = [...freeDays];
+    days.forEach((ds) => {
+      if (!existing.has(ds)) {
+        next.push({ id: Date.now() + Math.random(), date: ds, opis: freeDayForm.opis.trim() });
+      }
     });
+    setFreeDays(next);
+    syncToFirestore(entries, next);
     setShowFreeDayForm(false);
   }
 
   function removeFreeDay(id) {
-    setFreeDays((prev) => prev.filter((d) => d.id !== id));
+    const next = freeDays.filter((d) => d.id !== id);
+    setFreeDays(next);
+    syncToFirestore(entries, next);
   }
 
   if (entries === null) {
@@ -615,7 +623,7 @@ function App() {
   return (
     <div className="min-h-screen" style={{ background: BG, fontFamily: BODY_FONT, color: INK }}>
       <FontImport />
-      <Header saveState={saveState} onReset={() => setResetPanelOpen(true)} />
+      <Header saveState={saveState} onReset={() => setResetPanelOpen(true)} year={year} onYearChange={setYear} />
 
       <TabBar
         activeTab={activeTab}
@@ -638,10 +646,11 @@ function App() {
         {view === "month" && (
           <MonthView
             monthName={MONTH_NAMES[activeTab]}
+            year={year}
             summary={monthSummary}
             entries={monthEntries}
             calendarCells={calendarCells}
-            freeDays={freeDays.filter((d) => d.date.startsWith(`${YEAR}-${String(activeTab + 1).padStart(2, "0")}`))}
+            freeDays={freeDays.filter((d) => d.date.startsWith(`${year}-${String(activeTab + 1).padStart(2, "0")}`))}
             search={search}
             setSearch={setSearch}
             searchScope={searchScope}
@@ -657,7 +666,7 @@ function App() {
             onGoUpcoming={() => setView("upcoming")}
           />
         )}
-        {view === "summary" && <SummaryView yearData={yearData} onGoUpcoming={() => setView("upcoming")} />}
+        {view === "summary" && <SummaryView yearData={yearData} year={year} onGoUpcoming={() => setView("upcoming")} />}
         {view === "upcoming" && (
           <UpcomingView
             data={upcomingData}
@@ -681,23 +690,12 @@ function App() {
         />
       )}
 
-      {resetPanelOpen && !confirmResetOpen && !confirmResetFromDateOpen && (
+      {resetPanelOpen && !confirmResetFromDateOpen && (
         <ResetPanel
           resetFromDateValue={resetFromDateValue}
           onChangeDate={setResetFromDateValue}
-          onFullReset={() => setConfirmResetOpen(true)}
           onPartialReset={() => setConfirmResetFromDateOpen(true)}
           onClose={() => { setResetPanelOpen(false); setResetFromDateValue(""); }}
-        />
-      )}
-
-      {confirmResetOpen && (
-        <ConfirmModal
-          title="Przywrócić dane początkowe?"
-          message="Wszystkie zmiany, które wprowadziłaś/eś od ostatniego przywrócenia, zostaną zastąpione danymi wyjściowymi ze stycznia–lipca 2026."
-          confirmLabel="Przywróć"
-          onConfirm={resetData}
-          onCancel={() => setConfirmResetOpen(false)}
         />
       )}
 
@@ -802,10 +800,10 @@ function FontImport() {
 /* ------------------------------------------------------------------ */
 /* Header + Tabs                                                       */
 /* ------------------------------------------------------------------ */
-function Header({ saveState, onReset }) {
+function Header({ saveState, onReset, year, onYearChange }) {
   return (
     <header className="border-b" style={{ borderColor: LINE_COLOR, background: SURFACE }}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: PRIMARY }}>
             <Sparkles size={19} color="white" strokeWidth={2.2} />
@@ -814,10 +812,19 @@ function Header({ saveState, onReset }) {
             <h1 className="leading-tight" style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: "1.35rem", color: PRIMARY_DARK }}>
               Szczotka i Zmiotka
             </h1>
-            <p className="text-xs" style={{ color: "#5B6E67" }}>Rejestr zleceń — Vanessa Jamrozik · {YEAR}</p>
+            <p className="text-xs" style={{ color: "#5B6E67" }}>Rejestr zleceń — Vanessa Jamrozik</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 rounded-lg border" style={{ borderColor: LINE_COLOR }}>
+            <button onClick={() => onYearChange(year - 1)} className="p-1.5 rounded-l-lg hover:bg-gray-50 transition" title="Poprzedni rok">
+              <ChevronLeft size={15} color="#5B6E67" />
+            </button>
+            <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK, minWidth: 40, textAlign: "center" }}>{year}</span>
+            <button onClick={() => onYearChange(year + 1)} className="p-1.5 rounded-r-lg hover:bg-gray-50 transition" title="Następny rok">
+              <ChevronRight size={15} color="#5B6E67" />
+            </button>
+          </div>
           <span className="hidden sm:flex items-center gap-1 text-xs" style={{ color: saveState === "error" ? CORAL : "#5B6E67" }}>
             {saveState === "saved" && <><Check size={13} /> Zapisano</>}
             {saveState === "saving" && "Zapisywanie…"}
@@ -827,7 +834,7 @@ function Header({ saveState, onReset }) {
             onClick={onReset}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
             style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}
-            title="Przywróć dane początkowe"
+            title="Usuń dane od wybranej daty"
           >
             <RotateCcw size={13} /> Reset
           </button>
@@ -949,11 +956,11 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, summary, entries, calendarCells, freeDays, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onRemoveFreeDay, onGoUpcoming }) {
+function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onRemoveFreeDay, onGoUpcoming }) {
   return (
     <div className="space-y-5">
       <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
-        {monthName} <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{YEAR}</span>
+        {monthName} <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
       </h2>
 
       <div className="flex gap-3 flex-wrap">
@@ -1018,7 +1025,7 @@ function MonthView({ monthName, summary, entries, calendarCells, freeDays, searc
 
       {isYearSearch && (
         <p className="text-xs" style={{ color: "#5B6E67" }}>
-          Wyniki z całego {YEAR} roku ({entries.length}) — kliknij miesiąc przy wpisie, żeby do niego przejść.
+          Wyniki z całego {year} roku ({entries.length}) — kliknij miesiąc przy wpisie, żeby do niego przejść.
         </p>
       )}
 
@@ -1393,11 +1400,11 @@ function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMove,
   );
 }
 
-function SummaryView({ yearData, onGoUpcoming }) {
+function SummaryView({ yearData, year, onGoUpcoming }) {
   return (
     <div className="space-y-6">
       <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
-        Podsumowanie roczne <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{YEAR}</span>
+        Podsumowanie roczne <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
       </h2>
 
       <div className="flex gap-3 flex-wrap">
@@ -1745,7 +1752,7 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
   );
 }
 
-function ResetPanel({ resetFromDateValue, onChangeDate, onFullReset, onPartialReset, onClose }) {
+function ResetPanel({ resetFromDateValue, onChangeDate, onPartialReset, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
       <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
@@ -1756,38 +1763,21 @@ function ResetPanel({ resetFromDateValue, onChangeDate, onFullReset, onPartialRe
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
 
-        <div className="p-5 space-y-5">
-          <div>
-            <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
-              Przywróć wszystkie dane do stanu początkowego (styczeń–lipiec 2026).
-            </p>
-            <button
-              onClick={onFullReset}
-              className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
-              style={{ background: CORAL }}
-            >
-              Przywróć dane początkowe
-            </button>
-          </div>
-
-          <div className="h-px" style={{ background: LINE_COLOR }} />
-
-          <div>
-            <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
-              Usuń wszystkie wpisy i dni wolne od wybranej daty (włącznie) — wcześniejsze dane zostaną nietknięte.
-            </p>
-            <FormField label="Usuń dane od dnia">
-              <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={resetFromDateValue} onChange={(e) => onChangeDate(e.target.value)} />
-            </FormField>
-            <button
-              onClick={onPartialReset}
-              disabled={!resetFromDateValue}
-              className="w-full mt-2 px-4 py-2.5 rounded-lg text-sm font-semibold border disabled:opacity-40"
-              style={{ borderColor: CORAL, color: CORAL }}
-            >
-              Usuń dane od tej daty
-            </button>
-          </div>
+        <div className="p-5 space-y-2">
+          <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
+            Usuń wszystkie wpisy i dni wolne od wybranej daty (włącznie) — wcześniejsze dane zostaną nietknięte.
+          </p>
+          <FormField label="Usuń dane od dnia">
+            <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={resetFromDateValue} onChange={(e) => onChangeDate(e.target.value)} />
+          </FormField>
+          <button
+            onClick={onPartialReset}
+            disabled={!resetFromDateValue}
+            className="w-full mt-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: CORAL }}
+          >
+            Usuń dane od tej daty
+          </button>
         </div>
       </div>
     </div>
