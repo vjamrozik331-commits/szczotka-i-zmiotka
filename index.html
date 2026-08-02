@@ -110,6 +110,7 @@ const AlertTriangle = (p) => <Icon {...p}><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.
 const CheckCircle2 = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></Icon>;
 const Ban = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></Icon>;
 const Move = (p) => <Icon {...p}><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></Icon>;
+const Umbrella = (p) => <Icon {...p}><path d="M22 12a10 10 0 1 0-20 0"/><path d="M12 12v8a2 2 0 0 0 4 0"/><path d="M12 2v2"/><path d="M2 12h20"/></Icon>;
 
 
 /* ------------------------------------------------------------------ */
@@ -150,6 +151,7 @@ function OrderStatusIcon({ status, size = 11 }) {
   return null;
 }
 const STORAGE_KEY = "szczotka-zmiotka-entries-v1";
+const STORAGE_KEY_FREE = "szczotka-zmiotka-freedays-v1";
 
 function categorize(desc) {
   if (!desc) return "";
@@ -230,6 +232,7 @@ const emptyForm = {
 
 function App() {
   const [entries, setEntries] = useState(null);
+  const [freeDays, setFreeDays] = useState([]);
   const [activeTab, setActiveTab] = useState(new Date().getMonth() < 12 ? new Date().getMonth() : 0);
   const [view, setView] = useState("month"); // "month" | "summary" | "upcoming"
   const [showForm, setShowForm] = useState(false);
@@ -238,10 +241,15 @@ function App() {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
   const [searchScope, setSearchScope] = useState("month"); // "month" | "year"
+  const [resetPanelOpen, setResetPanelOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [resetFromDateValue, setResetFromDateValue] = useState("");
+  const [confirmResetFromDateOpen, setConfirmResetFromDateOpen] = useState(false);
   const [conflictInfo, setConflictInfo] = useState(null);
   const [moveInfo, setMoveInfo] = useState(null);
   const [moveConflict, setMoveConflict] = useState(null);
+  const [showFreeDayForm, setShowFreeDayForm] = useState(false);
+  const [freeDayForm, setFreeDayForm] = useState({ start: "", end: "", opis: "" });
   const [saveState, setSaveState] = useState("idle");
 
   // load from Firestore (real-time sync across devices) with localStorage fallback
@@ -250,6 +258,8 @@ function App() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
+        const rawFree = localStorage.getItem(STORAGE_KEY_FREE);
+        setFreeDays(rawFree ? JSON.parse(rawFree) : []);
       } catch (e) {
         setEntries(SEED_ENTRIES);
       }
@@ -260,15 +270,19 @@ function App() {
       (snap) => {
         if (snap.exists) {
           setEntries(snap.data().items || []);
+          setFreeDays(snap.data().freeDays || []);
         } else {
-          docRef.set({ items: SEED_ENTRIES }).catch(() => {});
+          docRef.set({ items: SEED_ENTRIES, freeDays: [] }).catch(() => {});
           setEntries(SEED_ENTRIES);
+          setFreeDays([]);
         }
       },
       () => {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
           setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
+          const rawFree = localStorage.getItem(STORAGE_KEY_FREE);
+          setFreeDays(rawFree ? JSON.parse(rawFree) : []);
         } catch (e) {
           setEntries(SEED_ENTRIES);
         }
@@ -284,9 +298,10 @@ function App() {
     const t = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        localStorage.setItem(STORAGE_KEY_FREE, JSON.stringify(freeDays));
       } catch (e) {}
       if (window.firebaseDb) {
-        window.firebaseDb.collection("app-data").doc("entries").set({ items: entries })
+        window.firebaseDb.collection("app-data").doc("entries").set({ items: entries, freeDays: freeDays })
           .then(() => setSaveState("saved"))
           .catch(() => setSaveState("error"));
       } else {
@@ -294,7 +309,7 @@ function App() {
       }
     }, 400);
     return () => clearTimeout(t);
-  }, [entries]);
+  }, [entries, freeDays]);
 
   const isYearSearch = search.trim() !== "" && searchScope === "year";
 
@@ -403,10 +418,11 @@ function App() {
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${YEAR}-${String(activeTab + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const dayEntries = monthEntriesForCalendar(entries, dateStr);
-      cells.push({ day: d, dateStr, entries: dayEntries });
+      const freeDay = freeDays.find((f) => f.date === dateStr) || null;
+      cells.push({ day: d, dateStr, entries: dayEntries, freeDay });
     }
     return cells;
-  }, [entries, activeTab]);
+  }, [entries, activeTab, freeDays]);
 
   function monthEntriesForCalendar(entries, dateStr) {
     return (entries || []).filter((e) => e.data === dateStr);
@@ -493,10 +509,15 @@ function App() {
   function saveEntry() {
     if (!form.data) return;
     const payload = buildPayload();
+    const freeDayHit = (formType === "klient" || formType === "full") ? freeDays.find((d) => d.date === payload.data) : null;
+    if (freeDayHit) {
+      setConflictInfo({ payload, type: "freeday", freeDay: freeDayHit });
+      return;
+    }
     if (payload.godzinaStart) {
       const conflict = findConflict(entries, payload, editingId);
       if (conflict) {
-        setConflictInfo({ payload, conflict });
+        setConflictInfo({ payload, type: "time", conflict });
         return;
       }
     }
@@ -534,7 +555,51 @@ function App() {
 
   function resetData() {
     setEntries(SEED_ENTRIES);
+    setFreeDays([]);
     setConfirmResetOpen(false);
+    setResetPanelOpen(false);
+  }
+
+  function resetFromDate() {
+    if (!resetFromDateValue) return;
+    setEntries((prev) => prev.filter((e) => !e.data || e.data < resetFromDateValue));
+    setFreeDays((prev) => prev.filter((d) => d.date < resetFromDateValue));
+    setConfirmResetFromDateOpen(false);
+    setResetPanelOpen(false);
+    setResetFromDateValue("");
+  }
+
+  function openFreeDayForm(dateStr) {
+    setFreeDayForm({ start: dateStr || "", end: dateStr || "", opis: "" });
+    setShowFreeDayForm(true);
+  }
+
+  function saveFreeDays() {
+    if (!freeDayForm.start) return;
+    const start = freeDayForm.start;
+    const end = freeDayForm.end || freeDayForm.start;
+    const startD = new Date(start + "T00:00:00");
+    const endD = new Date(end + "T00:00:00");
+    const days = [];
+    for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      days.push(ds);
+    }
+    setFreeDays((prev) => {
+      const existing = new Set(prev.map((f) => f.date));
+      const next = [...prev];
+      days.forEach((ds) => {
+        if (!existing.has(ds)) {
+          next.push({ id: Date.now() + Math.random(), date: ds, opis: freeDayForm.opis.trim() });
+        }
+      });
+      return next;
+    });
+    setShowFreeDayForm(false);
+  }
+
+  function removeFreeDay(id) {
+    setFreeDays((prev) => prev.filter((d) => d.id !== id));
   }
 
   if (entries === null) {
@@ -550,7 +615,7 @@ function App() {
   return (
     <div className="min-h-screen" style={{ background: BG, fontFamily: BODY_FONT, color: INK }}>
       <FontImport />
-      <Header saveState={saveState} onReset={() => setConfirmResetOpen(true)} />
+      <Header saveState={saveState} onReset={() => setResetPanelOpen(true)} />
 
       <TabBar
         activeTab={activeTab}
@@ -564,6 +629,7 @@ function App() {
         upcomingCount={upcomingData.upcoming.length + upcomingData.overdue.length}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
+        onAddFreeDay={() => openFreeDayForm()}
         onGoUpcoming={() => setView("upcoming")}
         onGoSummary={() => setView("summary")}
       />
@@ -575,6 +641,7 @@ function App() {
             summary={monthSummary}
             entries={monthEntries}
             calendarCells={calendarCells}
+            freeDays={freeDays.filter((d) => d.date.startsWith(`${YEAR}-${String(activeTab + 1).padStart(2, "0")}`))}
             search={search}
             setSearch={setSearch}
             searchScope={searchScope}
@@ -586,6 +653,7 @@ function App() {
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setSearch(""); }}
             onSetStatus={setEntryStatus}
             onMove={openMove}
+            onRemoveFreeDay={removeFreeDay}
             onGoUpcoming={() => setView("upcoming")}
           />
         )}
@@ -613,6 +681,16 @@ function App() {
         />
       )}
 
+      {resetPanelOpen && !confirmResetOpen && !confirmResetFromDateOpen && (
+        <ResetPanel
+          resetFromDateValue={resetFromDateValue}
+          onChangeDate={setResetFromDateValue}
+          onFullReset={() => setConfirmResetOpen(true)}
+          onPartialReset={() => setConfirmResetFromDateOpen(true)}
+          onClose={() => { setResetPanelOpen(false); setResetFromDateValue(""); }}
+        />
+      )}
+
       {confirmResetOpen && (
         <ConfirmModal
           title="Przywrócić dane początkowe?"
@@ -623,11 +701,34 @@ function App() {
         />
       )}
 
-      {conflictInfo && (
+      {confirmResetFromDateOpen && (
+        <ConfirmModal
+          title="Usunąć dane od wybranej daty?"
+          message={`Wszystkie wpisy i dni wolne od ${resetFromDateValue ? resetFromDateValue.split("-").reverse().join(".") : "wybranej daty"} (włącznie) zostaną trwale usunięte. Dane sprzed tej daty zostaną nietknięte. Tej operacji nie da się cofnąć.`}
+          confirmLabel="Usuń dane"
+          onConfirm={resetFromDate}
+          onCancel={() => setConfirmResetFromDateOpen(false)}
+        />
+      )}
+
+      {conflictInfo && conflictInfo.type === "time" && (
         <ConfirmModal
           title="Kolizja terminów"
           message={`Ten termin (${fmtTimeRange(conflictInfo.payload.godzinaStart, conflictInfo.payload.godziny)}) nakłada się z wizytą u „${conflictInfo.conflict.klient || "innego klienta"}” (${fmtTimeRange(conflictInfo.conflict.godzinaStart, conflictInfo.conflict.godziny)}) tego samego dnia. Czy mimo to zapisać ten termin?`}
           confirmLabel="Zapisz mimo to"
+          onConfirm={() => {
+            commitPayload(conflictInfo.payload);
+            setConflictInfo(null);
+          }}
+          onCancel={() => setConflictInfo(null)}
+        />
+      )}
+
+      {conflictInfo && conflictInfo.type === "freeday" && (
+        <ConfirmModal
+          title="To dzień wolny"
+          message={`${conflictInfo.payload.data.split("-").reverse().join(".")} jest oznaczony jako dzień wolny${conflictInfo.freeDay.opis ? ` („${conflictInfo.freeDay.opis}”)` : ""}. Czy mimo to zaplanować na ten dzień zlecenie?`}
+          confirmLabel="Zaplanuj mimo to"
           onConfirm={() => {
             commitPayload(conflictInfo.payload);
             setConflictInfo(null);
@@ -652,6 +753,15 @@ function App() {
           confirmLabel="Przenieś mimo to"
           onConfirm={() => performMove(true)}
           onCancel={() => setMoveConflict(null)}
+        />
+      )}
+
+      {showFreeDayForm && (
+        <FreeDayModal
+          form={freeDayForm}
+          onChange={(field, value) => setFreeDayForm((f) => ({ ...f, [field]: value }))}
+          onClose={() => setShowFreeDayForm(false)}
+          onSave={saveFreeDays}
         />
       )}
     </div>
@@ -761,7 +871,7 @@ function TabBar({ activeTab, view, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onGoUpcoming, onGoSummary }) {
+function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoSummary }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
       <div className="flex gap-2 flex-wrap">
@@ -778,6 +888,13 @@ function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onGoUpcomi
           style={{ background: CORAL }}
         >
           <Receipt size={15} /> Zakupy
+        </button>
+        <button
+          onClick={onAddFreeDay}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border"
+          style={{ background: "#FDF6E9", color: "#8A6A1F", borderColor: "#EED9A8" }}
+        >
+          <Umbrella size={15} /> Dzień wolny
         </button>
         <span className="w-px my-1" style={{ background: LINE_COLOR }} />
         <button
@@ -832,7 +949,7 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, summary, entries, calendarCells, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onGoUpcoming }) {
+function MonthView({ monthName, summary, entries, calendarCells, freeDays, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onRemoveFreeDay, onGoUpcoming }) {
   return (
     <div className="space-y-5">
       <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
@@ -848,9 +965,30 @@ function MonthView({ monthName, summary, entries, calendarCells, search, setSear
         {summary.zaplanowaneLiczba > 0 && (
           <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={onGoUpcoming} />
         )}
+        {freeDays.length > 0 && (
+          <KpiCard icon={Umbrella} label="Dni wolne" value={freeDays.length} accent="#8A6A1F" />
+        )}
       </div>
 
       {!isYearSearch && <CalendarStrip cells={calendarCells} onAddForDay={onAddForDay} />}
+
+      {!isYearSearch && freeDays.length > 0 && (
+        <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+          <h3 className="text-xs font-semibold uppercase tracking-wide mb-2.5 flex items-center gap-1.5" style={{ color: "#8A6A1F" }}>
+            <Umbrella size={13} /> Dni wolne w tym miesiącu
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {freeDays.sort((a, b) => a.date.localeCompare(b.date)).map((fd) => (
+              <span key={fd.id} className="inline-flex items-center gap-1.5 text-xs pl-2.5 pr-1.5 py-1 rounded-full" style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
+                {fd.date.slice(8, 10)}.{fd.date.slice(5, 7)}{fd.opis ? ` — ${fd.opis}` : ""}
+                <button onClick={() => onRemoveFreeDay(fd.id)} className="p-0.5 rounded-full hover:bg-black/5" title="Usuń dzień wolny">
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 flex-wrap">
         <input
@@ -892,10 +1030,11 @@ function MonthView({ monthName, summary, entries, calendarCells, search, setSear
 function CalendarStrip({ cells, onAddForDay }) {
   return (
     <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
-      <div className="flex items-center gap-4 mb-3 text-[10px]" style={{ color: "#8CA098" }}>
+      <div className="flex items-center gap-4 mb-3 text-[10px] flex-wrap" style={{ color: "#8CA098" }}>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "rgba(31,110,92,0.55)" }} /> wykonane</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm border" style={{ borderColor: "#2A5C8A", borderStyle: "dashed", background: "#EAF1F8" }} /> zaplanowane</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: CORAL }} /> wydatek</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#FDF6E9", border: "1px solid #EED9A8" }} /> wolne</span>
       </div>
       <div className="grid grid-cols-7 gap-1.5 mb-1.5">
         {WEEKDAY_LETTERS.map((w) => (
@@ -913,6 +1052,7 @@ function CalendarStrip({ cells, onAddForDay }) {
           const dayZarobki = doneEntries.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
           const intensity = Math.min(1, dayZarobki / 400);
           const isPlannedOnly = plannedEntries.length > 0 && doneEntries.length === 0;
+          const isFree = !!cell.freeDay && doneEntries.length === 0 && plannedEntries.length === 0;
           return (
             <button
               key={idx}
@@ -923,15 +1063,18 @@ function CalendarStrip({ cells, onAddForDay }) {
                   ? `rgba(31,110,92,${0.15 + intensity * 0.55})`
                   : isPlannedOnly
                   ? "#EAF1F8"
+                  : isFree
+                  ? "#FDF6E9"
                   : isWeekend(cell.dateStr) ? "#F0EDE6" : "#FAFBFA",
-                border: isPlannedOnly ? "1px dashed #2A5C8A" : allCancelled ? "1px solid #E5E7EB" : "1px solid transparent",
-                color: doneEntries.length && intensity > 0.5 ? "white" : isPlannedOnly ? "#2A5C8A" : allCancelled ? "#B0B8B5" : INK,
+                border: isPlannedOnly ? "1px dashed #2A5C8A" : isFree ? "1px solid #EED9A8" : allCancelled ? "1px solid #E5E7EB" : "1px solid transparent",
+                color: doneEntries.length && intensity > 0.5 ? "white" : isPlannedOnly ? "#2A5C8A" : isFree ? "#8A6A1F" : allCancelled ? "#B0B8B5" : INK,
                 ringColor: PRIMARY,
               }}
-              title={cell.entries.length ? `${cell.entries.length} wpis(ów)` : "Dodaj wpis"}
+              title={cell.freeDay ? `Wolne${cell.freeDay.opis ? ": " + cell.freeDay.opis : ""}` : cell.entries.length ? `${cell.entries.length} wpis(ów)` : "Dodaj wpis"}
             >
               <span style={{ fontFamily: MONO_FONT, fontWeight: 500, textDecoration: allCancelled ? "line-through" : "none" }}>{cell.day}</span>
               {hasExpense && <span className="absolute bottom-1 w-1 h-1 rounded-full" style={{ background: CORAL }} />}
+              {isFree && <Umbrella size={9} className="absolute bottom-1" />}
             </button>
           );
         })}
@@ -1595,6 +1738,96 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
             style={{ background: "#2A5C8A" }}
           >
             Przenieś
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResetPanel({ resetFromDateValue, onChangeDate, onFullReset, onPartialReset, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
+          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
+            Reset danych
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          <div>
+            <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
+              Przywróć wszystkie dane do stanu początkowego (styczeń–lipiec 2026).
+            </p>
+            <button
+              onClick={onFullReset}
+              className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
+              style={{ background: CORAL }}
+            >
+              Przywróć dane początkowe
+            </button>
+          </div>
+
+          <div className="h-px" style={{ background: LINE_COLOR }} />
+
+          <div>
+            <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
+              Usuń wszystkie wpisy i dni wolne od wybranej daty (włącznie) — wcześniejsze dane zostaną nietknięte.
+            </p>
+            <FormField label="Usuń dane od dnia">
+              <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={resetFromDateValue} onChange={(e) => onChangeDate(e.target.value)} />
+            </FormField>
+            <button
+              onClick={onPartialReset}
+              disabled={!resetFromDateValue}
+              className="w-full mt-2 px-4 py-2.5 rounded-lg text-sm font-semibold border disabled:opacity-40"
+              style={{ borderColor: CORAL, color: CORAL }}
+            >
+              Usuń dane od tej daty
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FreeDayModal({ form, onChange, onClose, onSave }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
+          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: "#8A6A1F" }}>
+            Zaplanuj dzień wolny
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Od dnia">
+              <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.start} onChange={(e) => onChange("start", e.target.value)} />
+            </FormField>
+            <FormField label="Do dnia (opcjonalnie)">
+              <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.end} onChange={(e) => onChange("end", e.target.value)} />
+            </FormField>
+          </div>
+          <FormField label="Powód (opcjonalnie)">
+            <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.opis} onChange={(e) => onChange("opis", e.target.value)} placeholder="np. Urlop, Święto" />
+          </FormField>
+        </div>
+        <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
+            Anuluj
+          </button>
+          <button
+            onClick={onSave}
+            disabled={!form.start}
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: "#C99A2E" }}
+          >
+            Zapisz
           </button>
         </div>
       </div>
