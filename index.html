@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<title>Szczotka i Zmiotka — Rejestr zleceń</title>
+
+<!-- iOS: uruchamianie jako pełnoekranowa aplikacja po dodaniu do ekranu głównego -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Szczotka i Zmiotka" />
+<link rel="apple-touch-icon" href="data:image/png;base64,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" />
+<link rel="icon" href="data:image/png;base64,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" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjogIlN6Y3pvdGthIGkgWm1pb3RrYSDigJQgUmVqZXN0ciB6bGVjZcWEIiwgInNob3J0X25hbWUiOiAiU3pjem90a2EgaSBabWlvdGthIiwgImRlc2NyaXB0aW9uIjogIlJlamVzdHIgemxlY2XFhCBpIHd5ZGF0a8OzdyDigJQgVmFuZXNzYSBKYW1yb3ppayIsICJzdGFydF91cmwiOiAiLi8iLCAic2NvcGUiOiAiLi8iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgIm9yaWVudGF0aW9uIjogInBvcnRyYWl0IiwgImJhY2tncm91bmRfY29sb3IiOiAiI0Y1RjhGNiIsICJ0aGVtZV9jb2xvciI6ICIjMUY2RTVDIiwgImljb25zIjogW3sic3JjIjogImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBZ0FBQUFJQUNBSUFBQUI3R2tPdEFBQUxUa2xFUVZSNG5PM2R5NDBjUndKRlVWRVlQeWpES0Jjb1c4YUdjV3hNbVFVSFZGUDl5NnI4UmNROVowOG9rUTI4bXhHMTBKZXYzNy85QmtEUDczYy9BQUQzRUFDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBTkwrKysvLzNQMEljQnNCQUlnU0FMcCtmUDQ3QkpBbEFBQlJBZ0JjeEdGck5BSUFFQ1VBUkwzOEd2VmxlZ0cvdUF4SUFBQ2lCQUFnU2dDQVM3a0ZHb2NBVVBSNmc2elNxYnplTVFrQVFKUUFBRVFKQURtdUkyN25UekFJQVlEL3Mwb244V0tISlFBQVVRSUEzTUN4WUFRQ1FJdmR1WmdYUGpJQmdMOVpLMUlFQUxpSDNONU9BQUNpQklDUUxaK2NQa3NQNUdVT1RnQ0EyeWpFdlFRQUlFb0FxUEN4ZVRFdmZId0NBUDlrdWE3a2JkOUlBQUNpQkFBZ1NnQkljTTl3TVM5OENnSUFiN0JmVi9LMjd5SUFBRkVDQUJBbEFLelBEY1BGbm5qaC9rYTNFQUI0bTBsaWVmKzYrd0dBUmV4TTVzOS8vc2RmZng3eE9IeE9BSURublhGT1VvTExDQUNMYzVOemhtdmU2c3YvaWhpYzRjdlg3OS91ZmdZNDBjNnBzanN2alZCVGY1RURPUUVBSHhsaDlGOXlRWFFnQVdCbG80M1hSTVovZFVxd255c2dWbmJJaXFYMlpmemQvMWpxajdXZkV3RFV6VDc2THprV1BFUUFJR3FsM1g5TkNiWVFBSmExOXNEdDkzSVpGM3RYUm44anZ3R3dyQU5ITFRVbzg4WWc5V2M2aEJNQThJdWZNenBGQ1l6K0hnSUF2RzNZT3lLamZ4UUJZRTFERGRZQ1JvaUIzVCtjM3dCWTArRWpaWDNlZEhZTXZQWlRPUUVBenp2cEJ3TzdmdzBCWUVIdWY2NjMvNDdJNkYvUC94RU1JRW9BWUJPbml1MmUrSmIzK1g4TEFRQ0lFZ0JXNDFNZE5oSUE0R2J1Zis0aUFMQ1ZzOFYyTm4wS0FnQVFKUUFzeFVjNmJDY0F3SjFjRnQxSUFPQUJUaGpiV2ZieENRRHJzTTd3RUFFQWJ1T1VjQzhCZ01jNFo3QU1BUURPNGdOL2NBTEFJbnlZVDBjZWJpY0FBRkVDQUE5ejJ0ak9aLzdJQkFBZ1NnQllnVS95NlRnWmpFQUFBS0lFQUo3aHpMR2RqLzFoQ1FEVHM4WFRrWVJCQ0FCQWxBQUFSQWtBUE1uVjAzWXY3M3pjLzR4REFKaWJGWWFuQ1FCQWxBQUFSQWtBUE04RjFIWS9ydjc5QURBVUFXQmk5aGYyRUFEZ0lqNy9SeU1Bc0l0VENQTVNBR1psZVdFbkFRQ0lFZ0NBS0FHQXZWeEdNU2tCWUVvMkYvWVRBSUFvQVFDSUVnQTRnQ3NwWmlRQXpNZmF3aUVFQUNCS0FBQ2lCQUNPNFdLSzZRZ0FrN0d6Y0JRQkFJZ1NBSUFvQVdBbWc5Ly9EUDU0OEE4Q0FCQWxBQUJSQWdCSGNndkVSQVNBYWRoV09KWUFBRVFKQUVDVUFNREJYRlV4Q3dGZ0RsWVZEaWNBQUZFQ0FCQWxBRXhndXZ1ZjZSNllKZ0VBaUJJQWdDZ0JBSWdTQUVZMzZYMzZwSTlOaWdBQVJBa0FRSlFBQUVRSkFFT2IraVo5Nm9lblFBQUFvcjU4L2Y3dDdtZUFYNno2NGZ6SFgzL2UvUWp3Q3dGZ0ZLdnUvbXRLd0NBRWdEdDFSdjg5WXNDTkJJQ3JHZjMzaUFFWEV3QXVZdmNmSWdaY1FBQTRrZEhmVHdrNGp3QndNS04vSGpIZ1dBTEFNZXoreGNTQS9RU0E1eG45RVNnQlR4TUFIbVAwUnlZR1BFUUErSnpSbjVFWThDa0I0RjEyZnhsaXdKc0VnRjhZL2JVcEFTOEpBRVkvU2d3UWdDNjd6MDlpMENRQUxVYWZqeWxCaWdDc3oranpIREZZbmdBc3krNXpJREZZa2dBc3hlaHpBVEZZaGdCTXoraHpGeVdZblFETXl1NHpGREdZa1FETXhPZ3pCVEdZaFFDTXp1Z3pOVEVZbVFBTXl1NnpHQ1VZa0FBTXhPZ1RJUWFERUlDYkdYM2l4T0JHQW5BRG93K3ZLY0gxQk9BNmRoODJFb05yQ01DNWpEN3NKQWJuRVlEakdYMDRpUmdjU3dBT1kvZmhNa3B3Q0FIWXhlakQ3Y1RnYVFKd0dER0F5eGo5UXdqQUtjUUFEbWYwRHljQTUxSUMyTVBvbjBvQXJpTUdzSkhkdjRZQTNFTU00QitNL3ZVRTRINWlRSmJSdjVjQWpFVU1XSjdSSDRjQURFb0pXSW5SSDVNQVRFQU1tSkhSSDU4QVRFWU1HSnpkbjRnQVRFd01HSVRSbjVRQUxFSU11SmpSWDRBQXJFWUpPSS9SWDR3QXJFd00yTS9vTDB3QUtzU0E3WXgraEFBVWlRRnZzdnMxQWxBbkJuRkd2MHdBK0pzWVJCaDlmaEFBM3FBRTZ6SDZ2Q1lBZkVJTTVtWDArWmdBOEFBeEdKL1JaenNCNEVsaU1CUzd6eE1FZ0FPSXdTMk1QanNKQUVkU2dyTVpmUTRrQUp4RkRJNWk5RG1KQUhBRk1YaVUwZWNDQXNEVnhPQTlScCtMQ1FCM0VvUGY3RDczRVFDR1VDdUIwV2NFQXNCd1ZvMkIwV2MwQXNEUVpvK0IwV2RrdjkvOUFBRGNRd0FZMnRSZjBGTS9QQVVDQUJBbEFBQlJBZ0FRSlFDTWJ0S2I5RWtmbXhRQkFJZ1NBSUFvQVFDSUVnQW1NTjE5K25RUFRKTUFBRVFKQUVDVUFBQkVDUUJ6bU9oV2ZhSkhKVTRBQUtJRUFDQktBSmlHcXhVNGxnREFrVlNLaVFnQVFKUUFBRVFKQUROeHdRSUhFZ0E0akQ0eEZ3RUFpQklBZ0NnQllETERYck1NKzJEd0hnRUFpQklBZ0NnQllENHVXK0FRQWdBSDBDUm1KQUFBVVFJQUVDVUFUTW1WQyt3bkFMQ1hHakVwQVFDSUVnQ0FLQUZnVmk1ZVlDY0JnRjEwaUhrSkFFQ1VBQUJFQ1FBVGMvMENld2dBUEUrQm1Kb0FBRVFKQUhQekRRNVBFd0NBS0FHQUp6bDhNRHNCQUlnU0FLYm5TeHllSXdEd0ROVmhBUUlBRUNVQUFGRUN3QXBjeU1BVEJBQWVwamVzUVFBQW9nU0FSZmdxaDBjSkFFQ1VBTUJqSERWWWhnQUFSQWtBNi9CdERnOFJBSUFvQVlBSE9HU3dFZ0VBaUJJQWx1SUxIYllUQUlBb0FZQ3RIQzlZakFBQVJBa0FxL0dkRGhzSkFFQ1VBTUFtRGhhc1J3QllrTEdHTFFRQUlFb0FBS0lFQUQ3blRva2xDUUJyTXRud0tRRUFpQklBK0lUREJLc1NBSUFvQVdCWnZ0emhZd0lBRUNVQThCSEhDQlltQUt6TWZNTUhCQUFnU2dBQW9nUUEzdVVHaWJVSkFJc3o0dkFlQVFDSUVnQ0FLQUdBdDdrN1lua0N3UHBNT2J4SkFBQ2lCQUFnU2dEZ0RXNk5LQkFBRWd3NnZDWUFBRkVDQUJBbEFGUnN2d1Z5WDBTRUFBQkVDUUJBbEFEQUw5ei8wQ0VBaEJoM2VFa0FBS0lFQUNCS0FPQnY3b2hJRVFCYVREejhKQUFBVVFJQUVDVUE1THgzQytSMmlCb0JBSWdTQUlBb0FRQ0lFZ0NLWGwvMyt3R0FJQUVBaUJJQWdDZ0JBSWdTQUtKZVh2cjdBWUFtQVFDSUVnQ0FLQUVBaUJJQXVuNWMvZnNCZ0N3QkFJajY4dlg3dDd1ZkFZQWJPQUVBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBMVA4QVl4NC9tZTJmOHlZQUFBQUFTVVZPUks1Q1lJST0iLCAic2l6ZXMiOiAiNTEyeDUxMiIsICJ0eXBlIjogImltYWdlL3BuZyIsICJwdXJwb3NlIjogImFueSJ9LCB7InNyYyI6ICJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQWdBQUFBSUFDQUlBQUFCN0drT3RBQUFMVGtsRVFWUjRuTzNkeTQwY1J3SkZVVkVZUHlqREtCY29XOGFHY1d4TW1RVUhWRlA5eTZyOFJjUTlaMDhva1EyOG14RzEwSmV2MzcvOUJrRFA3M2MvQUFEM0VBQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQUlBb0FRQ0lFZ0NBS0FFQWlCSUFnQ2dCQUlnU0FJQW9BUUNJRWdDQUtBRUFpQklBZ0NnQkFJZ1NBSUFvQVFDSUVnQ0FLQUVBaUJJQWdDZ0JBSWdTQU5MKysrLy8zUDBJY0JzQkFJZ1NBTHArZlA0N0JKQWxBQUJSQWdCY3hHRnJOQUlBRUNVQVJMMzhHdlZsZWdHL3VBeElBQUNpQkFBZ1NnQ0FTN2tGR29jQVVQUjZnNnpTcWJ6ZU1Ra0FRSlFBQUVRSkFEbXVJMjduVHpBSUFZRC9zMG9uOFdLSEpRQUFVUUlBM01DeFlBUUNRSXZkdVpnWFBqSUJnTDlaSzFJRUFMaUgzTjVPQUFDaUJJQ1FMWitjUGtzUDVHVU9UZ0NBMnlqRXZRUUFJRW9BcVBDeGVURXZmSHdDQVA5a3VhN2tiZDlJQUFDaUJBQWdTZ0JJY005d01TOThDZ0lBYjdCZlYvSzI3eUlBQUZFQ0FCQWxBS3pQRGNQRm5uamgva2EzRUFCNG0wbGllZis2K3dHQVJleE01czkvL3NkZmZ4N3hPSHhPQUlEbm5YRk9Vb0xMQ0FDTGM1TnpobXZlNnN2L2loaWM0Y3ZYNzkvdWZnWTQwYzZwc2pzdmpWQlRmNUVET1FFQUh4bGg5Rjl5UVhRZ0FXQmxvNDNYUk1aL2RVcXdueXNnVm5iSWlxWDJaZnpkLzFqcWo3V2ZFd0RVelQ3Nkx6a1dQRVFBSUdxbDNYOU5DYllRQUphMTlzRHQ5M0laRjN0WFJuOGp2d0d3ckFOSExUVW84OFlnOVdjNmhCTUE4SXVmTXpwRkNZeitIZ0lBdkczWU95S2pmeFFCWUUxRERkWUNSb2lCM1QrYzN3QlkwK0VqWlgzZWRIWU12UFpUT1FFQXp6dnBCd083ZncwQllFSHVmNjYzLzQ3STZGL1AveEVNSUVvQVlCT25pdTJlK0piMytYOExBUUNJRWdCVzQxTWROaElBNEdidWYrNGlBTENWczhWMk5uMEtBZ0FRSlFBc3hVYzZiQ2NBd0oxY0Z0MUlBT0FCVGhqYldmYnhDUURyc003d0VBRUFidU9VY0M4QmdNYzRaN0FNQVFETzRnTi9jQUxBSW55WVQwY2ViaWNBQUZFQ0FBOXoydGpPWi83SUJBQWdTZ0JZZ1UveTZUZ1pqRUFBQUtJRUFKN2h6TEdkai8xaENRRFRzOFhUa1lSQkNBQkFsQUFBUkFrQVBNblYwM1l2NzN6Yy80eERBSmliRllhbkNRQkFsQUFBUkFrQVBNOEYxSFkvcnY3OUFEQVVBV0JpOWhmMkVBRGdJajcvUnlNQXNJdFRDUE1TQUdabGVXRW5BUUNJRWdDQUtBR0F2VnhHTVNrQllFbzJGL1lUQUlBb0FRQ0lFZ0E0Z0NzcFppUUF6TWZhd2lFRUFDQktBQUNpQkFDTzRXS0s2UWdBazdHemNCUUJBSWdTQUlBb0FXQW1nOS8vRFA1NDhBOENBQkFsQUFCUkFnQkhjZ3ZFUkFTQWFkaFdPSllBQUVRSkFFQ1VBTURCWEZVeEN3RmdEbFlWRGljQUFGRUNBQkFsQUV4Z3V2dWY2UjZZSmdFQWlCSUFnQ2dCQUlnU0FFWTM2WDM2cEk5TmlnQUFSQWtBUUpRQUFFUUpBRU9iK2laOTZvZW5RQUFBb3I1OC9mN3Q3bWVBWDZ6NjRmekhYMy9lL1Fqd0N3RmdGS3Z1L210S3dDQUVnRHQxUnY4OVlzQ05CSUNyR2YzM2lBRVhFd0F1WXZjZklnWmNRQUE0a2RIZlR3azRqd0J3TUtOL0hqSGdXQUxBTWV6K3hjU0EvUVNBNXhuOUVTZ0JUeE1BSG1QMFJ5WUdQRVFBK0p6Um41RVk4Q2tCNEYxMmZ4bGl3SnNFZ0Y4WS9iVXBBUzhKQUVZL1Nnd1FnQzY3ejA5aTBDUUFMVWFmanlsQmlnQ3N6K2p6SERGWW5nQXN5KzV6SURGWWtnQXN4ZWh6QVRGWWhnQk16K2h6RnlXWW5RRE15dTR6RkRHWWtRRE14T2d6QlRHWWhRQ016dWd6TlRFWW1RQU15dTZ6R0NVWWtBQU14T2dUSVFhREVJQ2JHWDNpeE9CR0FuQURvdyt2S2NIMUJPQTZkaDgyRW9OckNNQzVqRDdzSkFibkVZRGpHWDA0aVJnY1N3QU9ZL2ZoTWtwd0NBSFl4ZWpEN2NUZ2FRSndHREdBeXhqOVF3akFLY1FBRG1mMER5Y0E1MUlDMk1Qb24wb0FyaU1Hc0pIZHY0WUEzRU1NNEIrTS92VUU0SDVpUUpiUnY1Y0FqRVVNV0o3Ukg0Y0FERW9KV0luUkg1TUFURUFNbUpIUkg1OEFURVlNR0p6ZG40Z0FURXdNR0lUUm41UUFMRUlNdUpqUlg0QUFyRVlKT0kvUlg0d0FyRXdNMk0vb0wwd0FLc1NBN1l4K2hBQVVpUUZ2c3ZzMUFsQW5CbkZHdjB3QStKc1lSQmg5ZmhBQTNxQUU2ekg2dkNZQWZFSU01bVgwK1pnQThBQXhHSi9SWnpzQjRFbGlNQlM3enhNRWdBT0l3UzJNUGpzSkFFZFNnck1aZlE0a0FKeEZESTVpOURtSkFIQUZNWGlVMGVjQ0FzRFZ4T0E5UnArTENRQjNFb1BmN0Q3M0VRQ0dVQ3VCMFdjRUFzQndWbzJCMFdjMEFzRFFabytCMFdka3Y5LzlBQURjUXdBWTJ0UmYwRk0vUEFVQ0FCQWxBQUJSQWdBUUpRQ01idEtiOUVrZm14UUJBSWdTQUlBb0FRQ0lFZ0FtTU4xOStuUVBUSk1BQUVRSkFFQ1VBQUJFQ1FCem1PaFdmYUpISlU0QUFLSUVBQ0JLQUppR3F4VTRsZ0RBa1ZTS2lRZ0FRSlFBQUVRSkFETnh3UUlIRWdBNGpENHhGd0VBaUJJQWdDZ0JZRExEWHJNTSsyRHdIZ0VBaUJJQWdDZ0JZRDR1VytBUUFnQUgwQ1JtSkFBQVVRSUFFQ1VBVE1tVkMrd25BTENYR2pFcEFRQ0lFZ0NBS0FGZ1ZpNWVZQ2NCZ0YxMGlIa0pBRUNVQUFCRUNRQVRjLzBDZXdnQVBFK0JtSm9BQUVRSkFIUHpEUTVQRXdDQUtBR0FKemw4TURzQkFJZ1NBS2JuU3h5ZUl3RHdETlZoQVFJQUVDVUFBRkVDd0FwY3lNQVRCQUFlcGplc1FRQUFvZ1NBUmZncWgwY0pBRUNVQU1CakhEVlloZ0FBUkFrQTYvQnREZzhSQUlBb0FZQUhPR1N3RWdFQWlCSUFsdUlMSGJZVEFJQW9BWUN0SEM5WWpBQUFSQWtBcS9HZERoc0pBRUNVQU1BbURoYXNSd0JZa0xHR0xRUUFJRW9BQUtJRUFEN25Ub2tsQ1FCck10bndLUUVBaUJJQStJVERCS3NTQUlBb0FXQlp2dHpoWXdJQUVDVUE4QkhIQ0JZbUFLek1mTU1IQkFBZ1NnQUFvZ1FBM3VVR2liVUpBSXN6NHZBZUFRQ0lFZ0NBS0FHQXQ3azdZbmtDd1BwTU9ieEpBQUNpQkFBZ1NnRGdEVzZOS0JBQUVndzZ2Q1lBQUZFQ0FCQWxBRlJzdndWeVgwU0VBQUJFQ1FCQWxBREFMOXovMENFQWhCaDNlRWtBQUtJRUFDQktBT0J2N29oSUVRQmFURHo4SkFBQVVRSUFFQ1VBNUx4M0MrUjJpQm9CQUlnU0FJQW9BUUNJRWdDS1hsLzMrd0dBSUFFQWlCSUFnQ2dCQUlnU0FLSmVYdnI3QVlBbUFRQ0lFZ0NBS0FFQWlCSUF1bjVjL2ZzQmdDd0JBSWo2OHZYN3Q3dWZBWUFiT0FFQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQWxBQUFSQWtBUUpRQUFFUUpBRUNVQUFCRUNRQkFsQUFBUkFrQVFKUUFBRVFKQUVDVUFBQkVDUUJBbEFBQVJBa0FRSlFBQUVRSkFFQ1VBQUJFQ1FCQTFQOEFZeDQvbWUyZjh5WUFBQUFBU1VWT1JLNUNZSUk9IiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9wbmciLCAicHVycG9zZSI6ICJtYXNrYWJsZSJ9XX0=" />
+<meta name="theme-color" content="#1F6E5C" />
+<meta name="format-detection" content="telephone=no" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/react-is@18/umd/react-is.production.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overscroll-behavior-y: none; }
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  input, select, textarea, button { font-size: 16px; }
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #C7D6CF; border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  input:focus, select:focus, textarea:focus, button:focus-visible {
+    outline: 2px solid #1F6E5C; outline-offset: 1px;
+  }
+  #root:empty::before {
+    content: "Ładowanie aplikacji…";
+    display: flex; align-items: center; justify-content: center;
+    height: 100vh; font-family: Inter, sans-serif; color: #5B6E67; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react" data-type="module">
+const { useState, useEffect, useMemo, useCallback } = React;
+const {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} = Recharts;
+
+
+/* ---- Proste ikony SVG (zamiennik lucide-react, bez zależności) ---- */
+function Icon({ children, size = 16, color = "currentColor", strokeWidth = 2, className = "" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      {children}
+    </svg>
+  );
+}
+const Sparkles = (p) => <Icon {...p}><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2.1L22 18l-2.3.9L19 21l-.7-2.1L16 18l2.3-.9L19 15z"/></Icon>;
+const Plus = (p) => <Icon {...p}><path d="M12 5v14M5 12h14"/></Icon>;
+const Pencil = (p) => <Icon {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></Icon>;
+const Trash2 = (p) => <Icon {...p}><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></Icon>;
+const X = (p) => <Icon {...p}><path d="M18 6L6 18M6 6l12 12"/></Icon>;
+const TrendingUp = (p) => <Icon {...p}><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></Icon>;
+const Wallet = (p) => <Icon {...p}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 1 0 0 4h3v-4z"/></Icon>;
+const Receipt = (p) => <Icon {...p}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></Icon>;
+const Users = (p) => <Icon {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>;
+const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></Icon>;
+const Percent = (p) => <Icon {...p}><path d="M19 5L5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></Icon>;
+const RotateCcw = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></Icon>;
+const Check = (p) => <Icon {...p}><path d="M20 6L9 17l-5-5"/></Icon>;
+const CalendarClock = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15.5" r="3.2"/><path d="M12 14.2v1.3l.9.7"/></Icon>;
+const AlertTriangle = (p) => <Icon {...p}><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></Icon>;
+const CheckCircle2 = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></Icon>;
+const Ban = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></Icon>;
+const Move = (p) => <Icon {...p}><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></Icon>;
+
+
+/* ------------------------------------------------------------------ */
+/* Seed data — przeniesione z rejestru "Szczotka i Zmiotka" (2026)     */
+/* ------------------------------------------------------------------ */
+const SEED_ENTRIES = [{"id":1,"data":"2026-01-01","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":98.9,"opisWydatkow":"Szmatki","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":2,"data":"2026-01-05","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":105,"opisWydatkow":"Ręczniki","kategoria":"Chemia i materiały","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":3,"data":"2026-01-06","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":105,"opisWydatkow":"Szmatki","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":4,"data":"2026-01-10","klient":"Sylwia Nastał","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":250,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":5,"data":"2026-01-10","klient":"Martyna Nawara","adres":"Bolesławice","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":290,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":6,"data":"2026-01-13","klient":"Artur Mech","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":50,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":7,"data":"2026-01-16","klient":"Sylwia Nastał","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":220,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":8,"data":"2026-01-17","klient":"Elżbieta Koryluk","adres":"Raciborowice","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":280,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":9,"data":"2026-01-20","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":10,"data":"2026-01-24","klient":"Martyna Nawara","adres":"Bolesławice","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":250,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":11,"data":"2026-01-26","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":59.99,"opisWydatkow":"Ulotki","kategoria":"Marketing","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":12,"data":"2026-01-27","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":55.1,"opisWydatkow":"Swiffer","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":13,"data":"2026-01-28","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":49.99,"opisWydatkow":"Wkłady do Swiffer","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":14,"data":"2026-02-03","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":15,"data":"2026-02-04","klient":"Martyna Nawara","adres":"Bolesławice","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":295,"wydatki":45,"opisWydatkow":"Filtr","kategoria":"Inne","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":16,"data":"2026-02-09","klient":"Klaudia Miżdal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":300,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":17,"data":"2026-02-11","klient":"Sylwia Nastał","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":230,"wydatki":262.32,"opisWydatkow":"Paliwo","kategoria":"Paliwo","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":18,"data":"2026-02-17","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":19,"data":"2026-02-23","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":215.5,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":20,"data":"2026-02-24","klient":"Sylwia Nastał","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":21,"data":"2026-02-26","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":52.05,"opisWydatkow":"","kategoria":"Inne","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":22,"data":"2026-03-04","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":290,"wydatki":322.38,"opisWydatkow":"Paliwo","kategoria":"Paliwo","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":23,"data":"2026-03-04","klient":"Sylwia Nastał","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":230,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":24,"data":"2026-03-06","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":280,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":25,"data":"2026-03-10","klient":"Marcin Skrzypczyśki","adres":"Bolesławiec","opisUslugi":"usługi sprzątające i mycie okien","godziny":null,"zarobki":400,"wydatki":148.05,"opisWydatkow":"Ręczniki","kategoria":"Chemia i materiały","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":26,"data":"2026-03-16","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":49.39,"opisWydatkow":"Swiffer","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":27,"data":"2026-03-17","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":28,"data":"2026-03-20","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":280,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":29,"data":"2026-03-23","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":1476.7,"opisWydatkow":"Myjka parowa","kategoria":"Sprzęt","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":30,"data":"2026-03-24","klient":"Lidia Stolarczyk","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":320,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":31,"data":"2026-03-28","klient":"Martyna Świerzy","adres":"Lwówek Śląski","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":480,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":32,"data":"2026-03-31","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":33,"data":"2026-04-01","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":320,"wydatki":190.49,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":34,"data":"2026-04-07","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":35,"data":"2026-04-08","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":45.07,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":36,"data":"2026-04-14","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":50.99,"opisWydatkow":"Wkłady","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":37,"data":"2026-04-15","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":105,"opisWydatkow":"Ręczniki","kategoria":"Chemia i materiały","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":38,"data":"2026-04-16","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":39,"data":"2026-04-18","klient":"Marta Świerzy","adres":"Lwówek Śląski","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":850,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":40,"data":"2026-04-20","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":112.18,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":41,"data":"2026-04-21","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":42,"data":"2026-04-28","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":43,"data":"2026-04-28","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":370,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":44,"data":"2026-05-04","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":51.59,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":45,"data":"2026-05-05","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":69.97,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":46,"data":"2026-05-06","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":91.58,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":47,"data":"2026-05-07","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":69.97,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":48,"data":"2026-05-08","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":135,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":49,"data":"2026-05-11","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":350,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":50,"data":"2026-05-12","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":51,"data":"2026-05-19","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":350,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":52,"data":"2026-05-26","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":53,"data":"2026-06-01","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":54,"data":"2026-06-01","klient":"Michał Tarapata","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":340,"wydatki":59,"opisWydatkow":"Filtry","kategoria":"Inne","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":55,"data":"2026-06-02","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":59.99,"opisWydatkow":"Swiffer","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":56,"data":"2026-06-03","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":69.9,"opisWydatkow":"Płyny","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":57,"data":"2026-06-08","klient":"","adres":"","opisUslugi":"","godziny":null,"zarobki":null,"wydatki":105,"opisWydatkow":"Ręcznik","kategoria":"Chemia i materiały","typKlienta":"","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":58,"data":"2026-06-09","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":59,"data":"2026-06-10","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":60,"data":"2026-06-16","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":61,"data":"2026-06-23","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":360,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":62,"data":"2026-06-24","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":63,"data":"2026-06-30","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":64,"data":"2026-07-07","klient":"Michał Tarapata","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":270,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":65,"data":"2026-07-07","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":350,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":66,"data":"2026-07-08","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":350,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":67,"data":"2026-07-14","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":330,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Wykonane"},{"id":68,"data":"2026-07-21","klient":"Izabela Kowal","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":260,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"","statusZlecenia":"Zaplanowane"},{"id":69,"data":"2026-07-22","klient":"Novi Sp. z o.o.","adres":"Bolesławiec","opisUslugi":"usługi sprzątające","godziny":null,"zarobki":350,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Firma","status":"","uwagi":"","statusZlecenia":"Zaplanowane"},{"id":70,"data":"2026-08-05","klient":"Sylwia Nastał","adres":"Bolesławiec","opisUslugi":"usługi sprzątające i mycie okien","godziny":null,"zarobki":380,"wydatki":null,"opisWydatkow":"","kategoria":"","typKlienta":"Osoba prywatna","status":"","uwagi":"wstępna wycena, do potwierdzenia","statusZlecenia":"Zaplanowane"}];
+
+const MONTH_NAMES = ["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+const WEEKDAY_LETTERS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
+const YEAR = 2026;
+
+const CATEGORIES = ["Chemia i materiały", "Sprzęt", "Paliwo", "Marketing", "Inne"];
+const CATEGORY_COLORS = {
+  "Chemia i materiały": "#2A9D8F",
+  "Sprzęt": "#E9C46A",
+  "Paliwo": "#E76F51",
+  "Marketing": "#8AB17D",
+  "Inne": "#6B7280",
+};
+const CLIENT_TYPES = ["Osoba prywatna", "Firma"];
+const STATUSES = ["Zapłacono", "Oczekuje", "Częściowo"];
+const STATUS_STYLES = {
+  "Zapłacono": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Oczekuje": "bg-amber-50 text-amber-700 border-amber-200",
+  "Częściowo": "bg-sky-50 text-sky-700 border-sky-200",
+};
+
+const ORDER_STATUSES = ["Zaplanowane", "Wykonane", "Odwołane"];
+const ORDER_STATUS_STYLES = {
+  "Zaplanowane": "bg-sky-50 text-sky-700 border-sky-200",
+  "Wykonane": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Odwołane": "bg-gray-100 text-gray-500 border-gray-200",
+};
+function OrderStatusIcon({ status, size = 11 }) {
+  if (status === "Zaplanowane") return <CalendarClock size={size} />;
+  if (status === "Wykonane") return <CheckCircle2 size={size} />;
+  if (status === "Odwołane") return <Ban size={size} />;
+  return null;
+}
+const STORAGE_KEY = "szczotka-zmiotka-entries-v1";
+
+function categorize(desc) {
+  if (!desc) return "";
+  const d = desc.toLowerCase();
+  if (d.includes("paliwo")) return "Paliwo";
+  if (["płyn", "plyn", "swiffer", "wkład", "wklad", "szmat", "ręcznik", "recznik"].some((k) => d.includes(k))) return "Chemia i materiały";
+  if (d.includes("myjka") || d.includes("sprzęt") || d.includes("sprzet")) return "Sprzęt";
+  if (d.includes("ulotk") || d.includes("marketing")) return "Marketing";
+  return "Inne";
+}
+function classifyClient(name) {
+  if (!name) return "";
+  const n = name.toLowerCase();
+  if (n.includes("sp. z o") || n.includes("sp.zoo") || n.includes("s.c.") || n.includes("firma")) return "Firma";
+  return "Osoba prywatna";
+}
+function fmtPLN(v) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  return new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v) + " zł";
+}
+function fmtNum(v, suffix = "") {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  return new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 }).format(v) + suffix;
+}
+function weekdayName(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const idx = (d.getDay() + 6) % 7;
+  return ["poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"][idx];
+}
+function isWeekend(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function defaultOrderStatus(dateStr) {
+  if (!dateStr) return "Wykonane";
+  return dateStr > todayStr() ? "Zaplanowane" : "Wykonane";
+}
+function isRealized(e) {
+  return e.statusZlecenia !== "Zaplanowane" && e.statusZlecenia !== "Odwołane";
+}
+function timeToMinutes(t) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+function fmtTimeRange(start, hours) {
+  const startMin = timeToMinutes(start);
+  const dur = (Number(hours) || 1) * 60;
+  const endMin = startMin + dur;
+  const fmt = (min) => `${String(Math.floor((min % 1440) / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+  return `${fmt(startMin)}–${fmt(endMin)}`;
+}
+function findConflict(entries, payload, excludeId) {
+  if (!payload.godzinaStart || !payload.data) return null;
+  const startA = timeToMinutes(payload.godzinaStart);
+  const endA = startA + (Number(payload.godziny) || 1) * 60;
+  for (const e of entries) {
+    if (e.id === excludeId) continue;
+    if (e.data !== payload.data) continue;
+    if (!e.godzinaStart) continue;
+    if (e.statusZlecenia === "Odwołane") continue;
+    const startB = timeToMinutes(e.godzinaStart);
+    const endB = startB + (Number(e.godziny) || 1) * 60;
+    if (startA < endB && startB < endA) return e;
+  }
+  return null;
+}
+
+const emptyForm = {
+  data: "", godzinaStart: "", klient: "", adres: "", opisUslugi: "usługi sprzątające", godziny: "",
+  zarobki: "", wydatki: "", opisWydatkow: "", kategoria: "", typKlienta: "", status: "", uwagi: "",
+  statusZlecenia: "",
+};
+
+function App() {
+  const [entries, setEntries] = useState(null);
+  const [activeTab, setActiveTab] = useState(new Date().getMonth() < 12 ? new Date().getMonth() : 0);
+  const [view, setView] = useState("month"); // "month" | "summary" | "upcoming"
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [formType, setFormType] = useState("klient"); // "klient" | "zakup" | "full"
+  const [form, setForm] = useState(emptyForm);
+  const [search, setSearch] = useState("");
+  const [searchScope, setSearchScope] = useState("month"); // "month" | "year"
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [conflictInfo, setConflictInfo] = useState(null);
+  const [moveInfo, setMoveInfo] = useState(null);
+  const [moveConflict, setMoveConflict] = useState(null);
+  const [saveState, setSaveState] = useState("idle");
+
+  // load from storage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
+    } catch (e) {
+      setEntries(SEED_ENTRIES);
+    }
+  }, []);
+
+  // persist on change
+  useEffect(() => {
+    if (entries === null) return;
+    setSaveState("saving");
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        setSaveState("saved");
+      } catch (e) {
+        setSaveState("error");
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [entries]);
+
+  const isYearSearch = search.trim() !== "" && searchScope === "year";
+
+  const monthEntries = useMemo(() => {
+    if (!entries) return [];
+    const base = isYearSearch
+      ? entries.slice()
+      : entries.filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab);
+    return base
+      .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : a.id - b.id))
+      .filter((e) => {
+        if (!search.trim()) return true;
+        const s = search.toLowerCase();
+        return (e.klient || "").toLowerCase().includes(s) || (e.adres || "").toLowerCase().includes(s);
+      });
+  }, [entries, activeTab, search, isYearSearch]);
+
+  const monthSummary = useMemo(() => {
+    const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab);
+    const done = all.filter(isRealized);
+    const godziny = done.reduce((s, e) => s + (Number(e.godziny) || 0), 0);
+    const zarobki = done.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+    const wydatki = done.reduce((s, e) => s + (Number(e.wydatki) || 0), 0);
+    const liczbaZlecen = done.filter((e) => e.klient && e.klient.trim()).length;
+    const planned = all.filter((e) => e.statusZlecenia === "Zaplanowane");
+    const zaplanowaneZarobki = planned.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+    return {
+      godziny, zarobki, wydatki, zysk: zarobki - wydatki, liczbaZlecen,
+      stawka: godziny > 0 ? zarobki / godziny : 0,
+      zaplanowaneLiczba: planned.length, zaplanowaneZarobki,
+    };
+  }, [entries, activeTab]);
+
+  const yearData = useMemo(() => {
+    const months = MONTH_NAMES.map((name, idx) => {
+      const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === idx).filter(isRealized);
+      const godziny = all.reduce((s, e) => s + (Number(e.godziny) || 0), 0);
+      const zarobki = all.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+      const wydatki = all.reduce((s, e) => s + (Number(e.wydatki) || 0), 0);
+      const liczbaZlecen = all.filter((e) => e.klient && e.klient.trim()).length;
+      const zysk = zarobki - wydatki;
+      return { name, godziny, zarobki, wydatki, zysk, liczbaZlecen, stawka: godziny > 0 ? zarobki / godziny : 0, marza: zarobki > 0 ? zysk / zarobki : 0 };
+    });
+    let cum = 0;
+    const withCum = months.map((m) => { cum += m.zysk; return { ...m, skumulowany: cum }; });
+
+    const totalZarobki = months.reduce((s, m) => s + m.zarobki, 0);
+    const totalWydatki = months.reduce((s, m) => s + m.wydatki, 0);
+    const totalGodziny = months.reduce((s, m) => s + m.godziny, 0);
+    const totalZlecenia = months.reduce((s, m) => s + m.liczbaZlecen, 0);
+
+    const catMap = {};
+    (entries || []).filter(isRealized).forEach((e) => {
+      if (Number(e.wydatki) > 0) {
+        const cat = e.kategoria || "Inne";
+        catMap[cat] = (catMap[cat] || 0) + Number(e.wydatki);
+      }
+    });
+    const categories = CATEGORIES.map((c) => ({ name: c, value: Math.round((catMap[c] || 0) * 100) / 100 })).filter((c) => c.value > 0);
+
+    const clientMap = {};
+    (entries || []).filter(isRealized).forEach((e) => {
+      if (e.klient && e.klient.trim()) {
+        if (!clientMap[e.klient]) clientMap[e.klient] = { klient: e.klient, zarobki: 0, liczba: 0 };
+        clientMap[e.klient].zarobki += Number(e.zarobki) || 0;
+        clientMap[e.klient].liczba += 1;
+      }
+    });
+    const topClients = Object.values(clientMap).sort((a, b) => b.zarobki - a.zarobki).slice(0, 10);
+
+    const plannedAll = (entries || []).filter((e) => e.statusZlecenia === "Zaplanowane");
+    const zaplanowaneZarobki = plannedAll.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+
+    return {
+      months: withCum, totalZarobki, totalWydatki, totalGodziny, totalZlecenia,
+      totalZysk: totalZarobki - totalWydatki,
+      marza: totalZarobki > 0 ? (totalZarobki - totalWydatki) / totalZarobki : 0,
+      stawka: totalGodziny > 0 ? totalZarobki / totalGodziny : 0,
+      categories, topClients,
+      zaplanowaneLiczba: plannedAll.length, zaplanowaneZarobki,
+    };
+  }, [entries]);
+
+  const upcomingData = useMemo(() => {
+    const all = entries || [];
+    const today = todayStr();
+    const planned = all.filter((e) => e.statusZlecenia === "Zaplanowane" && e.data);
+    const overdue = planned.filter((e) => e.data < today).sort((a, b) => (a.data < b.data ? -1 : 1));
+    const upcoming = planned.filter((e) => e.data >= today).sort((a, b) => (a.data < b.data ? -1 : 1));
+    const zarobkiPlanowane = planned.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+    const next7 = upcoming.filter((e) => {
+      const d = new Date(e.data + "T00:00:00");
+      const t = new Date(today + "T00:00:00");
+      const diff = (d - t) / (1000 * 60 * 60 * 24);
+      return diff <= 7;
+    });
+    return { overdue, upcoming, zarobkiPlanowane, liczba: planned.length, next7count: next7.length };
+  }, [entries]);
+
+  const calendarCells = useMemo(() => {
+    const first = new Date(YEAR, activeTab, 1);
+    const daysInMonth = new Date(YEAR, activeTab + 1, 0).getDate();
+    const startOffset = (first.getDay() + 6) % 7;
+    const cells = [];
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${YEAR}-${String(activeTab + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const dayEntries = monthEntriesForCalendar(entries, dateStr);
+      cells.push({ day: d, dateStr, entries: dayEntries });
+    }
+    return cells;
+  }, [entries, activeTab]);
+
+  function monthEntriesForCalendar(entries, dateStr) {
+    return (entries || []).filter((e) => e.data === dateStr);
+  }
+
+  const openAddClientForm = useCallback((dateStr) => {
+    setEditingId(null);
+    setFormType("klient");
+    const d = dateStr || `${YEAR}-${String(activeTab + 1).padStart(2, "0")}-01`;
+    setForm({ ...emptyForm, data: d, statusZlecenia: defaultOrderStatus(d) });
+    setShowForm(true);
+  }, [activeTab]);
+
+  const openAddPurchaseForm = useCallback((dateStr) => {
+    setEditingId(null);
+    setFormType("zakup");
+    const d = dateStr || `${YEAR}-${String(activeTab + 1).padStart(2, "0")}-01`;
+    setForm({ ...emptyForm, data: d, opisUslugi: "", statusZlecenia: "Wykonane" });
+    setShowForm(true);
+  }, [activeTab]);
+
+  const openEditForm = useCallback((entry) => {
+    setEditingId(entry.id);
+    const hasKlient = !!(entry.klient && entry.klient.trim());
+    const hasZakup = (entry.wydatki !== null && entry.wydatki !== undefined && entry.wydatki !== "") || !!(entry.opisWydatkow && entry.opisWydatkow.trim());
+    let detectedType = "full";
+    if (hasKlient && !hasZakup) detectedType = "klient";
+    else if (hasZakup && !hasKlient) detectedType = "zakup";
+    else if (!hasKlient && !hasZakup) detectedType = "klient";
+    setFormType(detectedType);
+    setForm({
+      data: entry.data || "", godzinaStart: entry.godzinaStart || "", klient: entry.klient || "", adres: entry.adres || "",
+      opisUslugi: entry.opisUslugi || "", godziny: entry.godziny ?? "", zarobki: entry.zarobki ?? "",
+      wydatki: entry.wydatki ?? "", opisWydatkow: entry.opisWydatkow || "", kategoria: entry.kategoria || "",
+      typKlienta: entry.typKlienta || "", status: entry.status || "", uwagi: entry.uwagi || "",
+      statusZlecenia: entry.statusZlecenia || defaultOrderStatus(entry.data),
+    });
+    setShowForm(true);
+  }, []);
+
+  function handleFormChange(field, value) {
+    setForm((f) => {
+      const next = { ...f, [field]: value };
+      if (field === "opisWydatkow" && !f.kategoria) {
+        next.kategoria = categorize(value);
+      }
+      if (field === "klient" && !f.typKlienta) {
+        next.typKlienta = classifyClient(value);
+      }
+      return next;
+    });
+  }
+
+  function buildPayload() {
+    const payload = {
+      data: form.data, godzinaStart: form.godzinaStart, klient: form.klient.trim(), adres: form.adres.trim(),
+      opisUslugi: form.opisUslugi.trim(), godziny: form.godziny === "" ? null : Number(form.godziny),
+      zarobki: form.zarobki === "" ? null : Number(form.zarobki),
+      wydatki: form.wydatki === "" ? null : Number(form.wydatki),
+      opisWydatkow: form.opisWydatkow.trim(), kategoria: form.kategoria, typKlienta: form.typKlienta,
+      status: form.status, uwagi: form.uwagi.trim(),
+      statusZlecenia: form.statusZlecenia || defaultOrderStatus(form.data),
+    };
+    if (formType === "klient") {
+      payload.wydatki = null; payload.opisWydatkow = ""; payload.kategoria = "";
+    } else if (formType === "zakup") {
+      payload.klient = ""; payload.adres = ""; payload.opisUslugi = ""; payload.godziny = null;
+      payload.godzinaStart = ""; payload.zarobki = null; payload.typKlienta = ""; payload.status = ""; payload.statusZlecenia = "Wykonane";
+    }
+    return payload;
+  }
+
+  function commitPayload(payload) {
+    setEntries((prev) => {
+      if (editingId) {
+        return prev.map((e) => (e.id === editingId ? { ...payload, id: editingId } : e));
+      }
+      const nextId = prev.length ? Math.max(...prev.map((e) => e.id)) + 1 : 1;
+      return [...prev, { ...payload, id: nextId }];
+    });
+    setShowForm(false);
+  }
+
+  function saveEntry() {
+    if (!form.data) return;
+    const payload = buildPayload();
+    if (payload.godzinaStart) {
+      const conflict = findConflict(entries, payload, editingId);
+      if (conflict) {
+        setConflictInfo({ payload, conflict });
+        return;
+      }
+    }
+    commitPayload(payload);
+  }
+
+  function deleteEntry(id) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  function setEntryStatus(id, status) {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, statusZlecenia: status } : e)));
+  }
+
+  function openMove(entry) {
+    setMoveInfo({ id: entry.id, klient: entry.klient, opisWydatkow: entry.opisWydatkow, newDate: entry.data, newTime: entry.godzinaStart || "" });
+  }
+
+  function performMove(force) {
+    if (!moveInfo) return;
+    const original = entries.find((e) => e.id === moveInfo.id);
+    if (!original) { setMoveInfo(null); return; }
+    const payload = { ...original, data: moveInfo.newDate, godzinaStart: moveInfo.newTime };
+    if (!force && payload.godzinaStart) {
+      const conflict = findConflict(entries, payload, moveInfo.id);
+      if (conflict) {
+        setMoveConflict({ conflict });
+        return;
+      }
+    }
+    setEntries((prev) => prev.map((e) => (e.id === moveInfo.id ? { ...e, data: moveInfo.newDate, godzinaStart: moveInfo.newTime } : e)));
+    setMoveInfo(null);
+    setMoveConflict(null);
+  }
+
+  function resetData() {
+    setEntries(SEED_ENTRIES);
+    setConfirmResetOpen(false);
+  }
+
+  if (entries === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
+        <div className="flex items-center gap-2 text-sm" style={{ color: INK, fontFamily: BODY_FONT }}>
+          <Sparkles size={16} className="animate-pulse" /> Wczytywanie rejestru…
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen" style={{ background: BG, fontFamily: BODY_FONT, color: INK }}>
+      <FontImport />
+      <Header saveState={saveState} onReset={() => setConfirmResetOpen(true)} />
+
+      <TabBar
+        activeTab={activeTab}
+        view={view}
+        onSelectMonth={(i) => { setActiveTab(i); setView("month"); }}
+        yearData={yearData}
+      />
+
+      <ActionBar
+        view={view}
+        upcomingCount={upcomingData.upcoming.length + upcomingData.overdue.length}
+        onAddClient={() => openAddClientForm()}
+        onAddPurchase={() => openAddPurchaseForm()}
+        onGoUpcoming={() => setView("upcoming")}
+        onGoSummary={() => setView("summary")}
+      />
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-24 pt-4">
+        {view === "month" && (
+          <MonthView
+            monthName={MONTH_NAMES[activeTab]}
+            summary={monthSummary}
+            entries={monthEntries}
+            calendarCells={calendarCells}
+            search={search}
+            setSearch={setSearch}
+            searchScope={searchScope}
+            setSearchScope={setSearchScope}
+            isYearSearch={isYearSearch}
+            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
+            onEdit={openEditForm}
+            onDelete={deleteEntry}
+            onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setSearch(""); }}
+            onSetStatus={setEntryStatus}
+            onMove={openMove}
+            onGoUpcoming={() => setView("upcoming")}
+          />
+        )}
+        {view === "summary" && <SummaryView yearData={yearData} onGoUpcoming={() => setView("upcoming")} />}
+        {view === "upcoming" && (
+          <UpcomingView
+            data={upcomingData}
+            onEdit={openEditForm}
+            onDelete={deleteEntry}
+            onSetStatus={setEntryStatus}
+            onMove={openMove}
+            onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
+          />
+        )}
+      </main>
+
+      {showForm && !conflictInfo && (
+        <EntryFormModal
+          form={form}
+          isEditing={!!editingId}
+          formType={formType}
+          onChange={handleFormChange}
+          onClose={() => setShowForm(false)}
+          onSave={saveEntry}
+        />
+      )}
+
+      {confirmResetOpen && (
+        <ConfirmModal
+          title="Przywrócić dane początkowe?"
+          message="Wszystkie zmiany, które wprowadziłaś/eś od ostatniego przywrócenia, zostaną zastąpione danymi wyjściowymi ze stycznia–lipca 2026."
+          confirmLabel="Przywróć"
+          onConfirm={resetData}
+          onCancel={() => setConfirmResetOpen(false)}
+        />
+      )}
+
+      {conflictInfo && (
+        <ConfirmModal
+          title="Kolizja terminów"
+          message={`Ten termin (${fmtTimeRange(conflictInfo.payload.godzinaStart, conflictInfo.payload.godziny)}) nakłada się z wizytą u „${conflictInfo.conflict.klient || "innego klienta"}” (${fmtTimeRange(conflictInfo.conflict.godzinaStart, conflictInfo.conflict.godziny)}) tego samego dnia. Czy mimo to zapisać ten termin?`}
+          confirmLabel="Zapisz mimo to"
+          onConfirm={() => {
+            commitPayload(conflictInfo.payload);
+            setConflictInfo(null);
+          }}
+          onCancel={() => setConflictInfo(null)}
+        />
+      )}
+
+      {moveInfo && !moveConflict && (
+        <MoveModal
+          moveInfo={moveInfo}
+          onChange={(field, value) => setMoveInfo((m) => ({ ...m, [field]: value }))}
+          onClose={() => setMoveInfo(null)}
+          onSave={() => performMove(false)}
+        />
+      )}
+
+      {moveConflict && (
+        <ConfirmModal
+          title="Kolizja terminów"
+          message={`Nowy termin (${fmtTimeRange(moveInfo.newTime, entries.find((e) => e.id === moveInfo.id)?.godziny)}) nakłada się z wizytą u „${moveConflict.conflict.klient || "innego klienta"}” (${fmtTimeRange(moveConflict.conflict.godzinaStart, moveConflict.conflict.godziny)}) tego samego dnia. Czy mimo to przenieść ten termin?`}
+          confirmLabel="Przenieś mimo to"
+          onConfirm={() => performMove(true)}
+          onCancel={() => setMoveConflict(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                       */
+/* ------------------------------------------------------------------ */
+const BG = "#F5F8F6";
+const SURFACE = "#FFFFFF";
+const INK = "#1C2B27";
+const PRIMARY = "#1F6E5C";
+const PRIMARY_DARK = "#154A3F";
+const MINT = "#CFE9DE";
+const GOLD = "#C99A2E";
+const CORAL = "#E0665A";
+const LINE_COLOR = "#E1E8E4";
+const DISPLAY_FONT = "'Fraunces', serif";
+const BODY_FONT = "'Inter', sans-serif";
+const MONO_FONT = "'IBM Plex Mono', monospace";
+
+function FontImport() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+      * { box-sizing: border-box; }
+      ::-webkit-scrollbar { height: 8px; width: 8px; }
+      ::-webkit-scrollbar-thumb { background: #C7D6CF; border-radius: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      input:focus, select:focus, textarea:focus, button:focus-visible {
+        outline: 2px solid ${PRIMARY}; outline-offset: 1px;
+      }
+    `}</style>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Header + Tabs                                                       */
+/* ------------------------------------------------------------------ */
+function Header({ saveState, onReset }) {
+  return (
+    <header className="border-b" style={{ borderColor: LINE_COLOR, background: SURFACE }}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: PRIMARY }}>
+            <Sparkles size={19} color="white" strokeWidth={2.2} />
+          </div>
+          <div>
+            <h1 className="leading-tight" style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: "1.35rem", color: PRIMARY_DARK }}>
+              Szczotka i Zmiotka
+            </h1>
+            <p className="text-xs" style={{ color: "#5B6E67" }}>Rejestr zleceń — Vanessa Jamrozik · {YEAR}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:flex items-center gap-1 text-xs" style={{ color: saveState === "error" ? CORAL : "#5B6E67" }}>
+            {saveState === "saved" && <><Check size={13} /> Zapisano</>}
+            {saveState === "saving" && "Zapisywanie…"}
+            {saveState === "error" && "Błąd zapisu"}
+          </span>
+          <button
+            onClick={onReset}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
+            style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}
+            title="Przywróć dane początkowe"
+          >
+            <RotateCcw size={13} /> Reset
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function TabBar({ activeTab, view, onSelectMonth, yearData }) {
+  return (
+    <div className="sticky top-0 z-20 border-b" style={{ background: SURFACE, borderColor: LINE_COLOR }}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="flex gap-1 overflow-x-auto py-2" style={{ scrollbarWidth: "thin" }}>
+          {MONTH_NAMES.map((name, idx) => {
+            const isActive = view === "month" && activeTab === idx;
+            const zysk = yearData.months[idx]?.zysk ?? 0;
+            return (
+              <button
+                key={name}
+                onClick={() => onSelectMonth(idx)}
+                className="flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap flex items-center gap-1.5"
+                style={{
+                  background: isActive ? PRIMARY : "transparent",
+                  color: isActive ? "white" : "#3F534C",
+                }}
+              >
+                {name}
+                {zysk !== 0 && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: isActive ? "white" : zysk > 0 ? PRIMARY : CORAL, opacity: isActive ? 0.8 : 1 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onGoUpcoming, onGoSummary }) {
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={onAddClient}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90"
+          style={{ background: PRIMARY }}
+        >
+          <Users size={15} /> Zaplanuj zlecenie
+        </button>
+        <button
+          onClick={onAddPurchase}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90"
+          style={{ background: CORAL }}
+        >
+          <Receipt size={15} /> Zakupy
+        </button>
+        <span className="w-px my-1" style={{ background: LINE_COLOR }} />
+        <button
+          onClick={onGoUpcoming}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+          style={{ background: view === "upcoming" ? PRIMARY_DARK : "#EAF1F8", color: view === "upcoming" ? "white" : "#2A5C8A" }}
+        >
+          <CalendarClock size={14} /> Nadchodzące
+          {upcomingCount > 0 && (
+            <span
+              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
+              style={{ background: view === "upcoming" ? "rgba(255,255,255,0.25)" : "#2A5C8A", color: "white" }}
+            >
+              {upcomingCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={onGoSummary}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+          style={{ background: view === "summary" ? PRIMARY_DARK : MINT, color: view === "summary" ? "white" : PRIMARY_DARK }}
+        >
+          <TrendingUp size={14} /> Podsumowanie
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* KPI Card                                                             */
+/* ------------------------------------------------------------------ */
+function KpiCard({ icon: Icon, label, value, accent, onClick }) {
+  const clickable = !!onClick;
+  return (
+    <div
+      onClick={onClick}
+      className={`rounded-xl p-3.5 flex-1 min-w-[130px] transition ${clickable ? "cursor-pointer hover:shadow-sm hover:-translate-y-0.5" : ""}`}
+      style={{ background: SURFACE, border: `1px solid ${clickable ? "#2A5C8A55" : LINE_COLOR}` }}
+    >
+      <div className="flex items-center gap-1.5 mb-1.5" style={{ color: "#5B6E67" }}>
+        <Icon size={13} />
+        <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
+      </div>
+      <div style={{ fontFamily: MONO_FONT, fontWeight: 600, fontSize: "1.05rem", color: accent || INK }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Month View                                                           */
+/* ------------------------------------------------------------------ */
+function MonthView({ monthName, summary, entries, calendarCells, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onGoUpcoming }) {
+  return (
+    <div className="space-y-5">
+      <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
+        {monthName} <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{YEAR}</span>
+      </h2>
+
+      <div className="flex gap-3 flex-wrap">
+        <KpiCard icon={Wallet} label="Zarobki (wykonane)" value={fmtPLN(summary.zarobki)} accent={PRIMARY_DARK} />
+        <KpiCard icon={Receipt} label="Wydatki" value={fmtPLN(summary.wydatki)} accent={CORAL} />
+        <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(summary.zysk)} accent={summary.zysk >= 0 ? PRIMARY_DARK : CORAL} />
+        <KpiCard icon={Users} label="Liczba zleceń" value={summary.liczbaZlecen} />
+        <KpiCard icon={Clock} label="Śr. stawka" value={summary.stawka > 0 ? fmtPLN(summary.stawka) + "/h" : "—"} />
+        {summary.zaplanowaneLiczba > 0 && (
+          <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={onGoUpcoming} />
+        )}
+      </div>
+
+      {!isYearSearch && <CalendarStrip cells={calendarCells} onAddForDay={onAddForDay} />}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          type="text"
+          placeholder="Szukaj po kliencie lub adresie…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:w-72 px-3 py-2 rounded-lg text-sm border"
+          style={{ borderColor: LINE_COLOR, background: SURFACE }}
+        />
+        <div className="inline-flex rounded-lg border overflow-hidden flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          {[{ key: "month", label: "Ten miesiąc" }, { key: "year", label: "Cały rok" }].map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setSearchScope(opt.key)}
+              className="px-3 py-2 text-xs font-medium transition"
+              style={{
+                background: searchScope === opt.key ? PRIMARY : "transparent",
+                color: searchScope === opt.key ? "white" : "#5B6E67",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isYearSearch && (
+        <p className="text-xs" style={{ color: "#5B6E67" }}>
+          Wyniki z całego {YEAR} roku ({entries.length}) — kliknij miesiąc przy wpisie, żeby do niego przejść.
+        </p>
+      )}
+
+      <EntriesTable entries={entries} onEdit={onEdit} onDelete={onDelete} showMonth={isYearSearch} onJumpToMonth={onJumpToMonth} onSetStatus={onSetStatus} onMove={onMove} />
+    </div>
+  );
+}
+
+function CalendarStrip({ cells, onAddForDay }) {
+  return (
+    <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      <div className="flex items-center gap-4 mb-3 text-[10px]" style={{ color: "#8CA098" }}>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "rgba(31,110,92,0.55)" }} /> wykonane</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm border" style={{ borderColor: "#2A5C8A", borderStyle: "dashed", background: "#EAF1F8" }} /> zaplanowane</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: CORAL }} /> wydatek</span>
+      </div>
+      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+        {WEEKDAY_LETTERS.map((w) => (
+          <div key={w} className="text-center text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#8CA098" }}>{w}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5">
+        {cells.map((cell, idx) => {
+          if (!cell) return <div key={idx} />;
+          const activeEntries = cell.entries.filter((e) => e.statusZlecenia !== "Odwołane");
+          const doneEntries = activeEntries.filter((e) => e.klient && isRealized(e));
+          const plannedEntries = activeEntries.filter((e) => e.statusZlecenia === "Zaplanowane");
+          const hasExpense = activeEntries.some((e) => Number(e.wydatki) > 0 && !e.klient);
+          const allCancelled = cell.entries.length > 0 && cell.entries.every((e) => e.statusZlecenia === "Odwołane");
+          const dayZarobki = doneEntries.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+          const intensity = Math.min(1, dayZarobki / 400);
+          const isPlannedOnly = plannedEntries.length > 0 && doneEntries.length === 0;
+          return (
+            <button
+              key={idx}
+              onClick={() => onAddForDay(cell.dateStr)}
+              className="aspect-square rounded-lg flex flex-col items-center justify-center relative text-xs transition hover:ring-2"
+              style={{
+                background: doneEntries.length
+                  ? `rgba(31,110,92,${0.15 + intensity * 0.55})`
+                  : isPlannedOnly
+                  ? "#EAF1F8"
+                  : isWeekend(cell.dateStr) ? "#F0EDE6" : "#FAFBFA",
+                border: isPlannedOnly ? "1px dashed #2A5C8A" : allCancelled ? "1px solid #E5E7EB" : "1px solid transparent",
+                color: doneEntries.length && intensity > 0.5 ? "white" : isPlannedOnly ? "#2A5C8A" : allCancelled ? "#B0B8B5" : INK,
+                ringColor: PRIMARY,
+              }}
+              title={cell.entries.length ? `${cell.entries.length} wpis(ów)` : "Dodaj wpis"}
+            >
+              <span style={{ fontFamily: MONO_FONT, fontWeight: 500, textDecoration: allCancelled ? "line-through" : "none" }}>{cell.day}</span>
+              {hasExpense && <span className="absolute bottom-1 w-1 h-1 rounded-full" style={{ background: CORAL }} />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onSetStatus, onMove }) {
+  if (entries.length === 0) {
+    return (
+      <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+        {showMonth ? "Brak wyników dla podanej frazy w całym roku." : "Brak wpisów w tym miesiącu. Kliknij dzień w kalendarzu albo „Dodaj wpis”, żeby zacząć."}
+      </div>
+    );
+  }
+  const headers = showMonth
+    ? ["Data", "Miesiąc", "Klient", "Adres", "Opis", "Godz.", "Zarobki", "Wydatki", "Kategoria", "Zlecenie", "Płatność", ""]
+    : ["Data", "Klient", "Adres", "Opis", "Godz.", "Zarobki", "Wydatki", "Kategoria", "Zlecenie", "Płatność", ""];
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth: showMonth ? 1000 : 900 }}>
+          <thead>
+            <tr style={{ background: "#F0F5F2" }}>
+              {headers.map((h) => (
+                <th key={h} className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#5B6E67" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e) => {
+              const weekend = e.data ? isWeekend(e.data) : false;
+              const entryMonth = e.data ? new Date(e.data + "T00:00:00").getMonth() : null;
+              const orderStatus = e.statusZlecenia || "Wykonane";
+              const isCancelled = orderStatus === "Odwołane";
+              const isPlanned = orderStatus === "Zaplanowane";
+              const isOverdue = isPlanned && e.data && e.data < todayStr();
+              return (
+                <tr
+                  key={e.id}
+                  className="border-t transition hover:bg-gray-50"
+                  style={{
+                    borderColor: LINE_COLOR,
+                    background: isCancelled ? "#FAFAFA" : isPlanned ? "#F7FAFD" : weekend ? "#FAF8F3" : "transparent",
+                    opacity: isCancelled ? 0.55 : 1,
+                  }}
+                >
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <div style={{ fontFamily: MONO_FONT, fontSize: "0.82rem" }}>{e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}</div>
+                    <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
+                      {e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
+                    </div>
+                  </td>
+                  {showMonth && (
+                    <td className="px-3 py-2.5">
+                      {entryMonth !== null ? (
+                        <button
+                          onClick={() => onJumpToMonth(entryMonth)}
+                          className="text-[11px] px-2 py-0.5 rounded-full font-medium transition hover:opacity-80"
+                          style={{ background: MINT, color: PRIMARY_DARK }}
+                        >
+                          {MONTH_NAMES[entryMonth]}
+                        </button>
+                      ) : "—"}
+                    </td>
+                  )}
+                  <td className="px-3 py-2.5">{e.klient || <span style={{ color: "#C7D6CF" }}>—</span>}</td>
+                  <td className="px-3 py-2.5" style={{ color: "#5B6E67" }}>{e.adres || "—"}</td>
+                  <td className="px-3 py-2.5" style={{ color: "#5B6E67" }}>{e.opisUslugi || e.opisWydatkow || "—"}</td>
+                  <td className="px-3 py-2.5" style={{ fontFamily: MONO_FONT }}>{e.godziny ? fmtNum(e.godziny, " h") : "—"}</td>
+                  <td className="px-3 py-2.5 font-semibold" style={{ fontFamily: MONO_FONT, color: e.zarobki ? PRIMARY_DARK : "#C7D6CF" }}>
+                    {e.zarobki ? fmtPLN(e.zarobki) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5" style={{ fontFamily: MONO_FONT, color: e.wydatki ? CORAL : "#C7D6CF" }}>
+                    {e.wydatki ? fmtPLN(e.wydatki) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {e.kategoria ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full" style={{ background: `${CATEGORY_COLORS[e.kategoria]}1A`, color: CATEGORY_COLORS[e.kategoria] }}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: CATEGORY_COLORS[e.kategoria] }} />
+                        {e.kategoria}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${ORDER_STATUS_STYLES[orderStatus] || ""}`}>
+                      {isOverdue ? <AlertTriangle size={11} /> : <OrderStatusIcon status={orderStatus} />}
+                      {isOverdue ? "Zaległe" : orderStatus}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {e.status ? (
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_STYLES[e.status] || ""}`}>{e.status}</span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-1 justify-end">
+                      {isPlanned && (
+                        <button onClick={() => onSetStatus(e.id, "Wykonane")} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                          <CheckCircle2 size={14} color={PRIMARY} />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                          <Move size={14} color="#2A5C8A" />
+                        </button>
+                      )}
+                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Summary View                                                         */
+/* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
+/* Upcoming View — planowanie i nadzór przyszłych zleceń                */
+/* ------------------------------------------------------------------ */
+function UpcomingView({ data, onEdit, onDelete, onSetStatus, onMove, onJumpToMonth }) {
+  const { overdue, upcoming, zarobkiPlanowane, liczba, next7count } = data;
+  const isEmpty = overdue.length === 0 && upcoming.length === 0;
+
+  const monthGroups = useMemo(() => {
+    const groups = {};
+    [...overdue, ...upcoming].forEach((e) => {
+      if (!e.data) return;
+      const key = e.data.slice(0, 7); // "YYYY-MM"
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    });
+    return Object.keys(groups).sort().map((key) => {
+      const [y, m] = key.split("-").map(Number);
+      return { year: y, month: m - 1, entries: groups[key] };
+    });
+  }, [overdue, upcoming]);
+
+  return (
+    <div className="space-y-6">
+      <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
+        Nadchodzące zlecenia
+      </h2>
+
+      <div className="flex gap-3 flex-wrap">
+        <KpiCard icon={CalendarClock} label="Zaplanowane" value={liczba} accent="#2A5C8A" />
+        <KpiCard icon={Wallet} label="Spodziewany przychód" value={fmtPLN(zarobkiPlanowane)} accent="#2A5C8A" />
+        <KpiCard icon={Clock} label="W ciągu 7 dni" value={next7count} />
+        {overdue.length > 0 && <KpiCard icon={AlertTriangle} label="Zaległe" value={overdue.length} accent={CORAL} />}
+      </div>
+
+      {isEmpty && (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          Brak zaplanowanych zleceń. Kliknij „Zaplanuj zlecenie” na górze, żeby dodać pierwsze.
+        </div>
+      )}
+
+      {monthGroups.length > 0 && (
+        <div className="flex gap-4 flex-wrap">
+          {monthGroups.map((g) => (
+            <MiniMonthCalendar key={`${g.year}-${g.month}`} year={g.year} month={g.month} entries={g.entries} onDayClick={() => onJumpToMonth(g.month)} />
+          ))}
+        </div>
+      )}
+
+      {overdue.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5" style={{ color: CORAL }}>
+            <AlertTriangle size={14} /> Zaległe — minęła data, zaktualizuj status ({overdue.length})
+          </h3>
+          <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+        </div>
+      )}
+
+      {upcoming.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold mb-2" style={{ color: PRIMARY_DARK }}>
+            Nadchodzące ({upcoming.length})
+          </h3>
+          <UpcomingList entries={upcoming} onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MiniMonthCalendar({ year, month, entries, onDayClick }) {
+  const cells = useMemo(() => {
+    const first = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startOffset = (first.getDay() + 6) % 7;
+    const byDay = {};
+    entries.forEach((e) => {
+      const d = Number(e.data.slice(8, 10));
+      if (!byDay[d]) byDay[d] = [];
+      byDay[d].push(e);
+    });
+    const list = [];
+    for (let i = 0; i < startOffset; i++) list.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      list.push({ day: d, dateStr, entries: byDay[d] || [] });
+    }
+    return list;
+  }, [year, month, entries]);
+
+  return (
+    <div className="rounded-xl p-4 flex-1 min-w-[280px]" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      <h3 className="text-sm font-semibold mb-3" style={{ color: PRIMARY_DARK }}>
+        {MONTH_NAMES[month]} <span style={{ color: "#8CA098", fontWeight: 400 }}>{year}</span>
+      </h3>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAY_LETTERS.map((w) => (
+          <div key={w} className="text-center text-[9px] font-semibold uppercase" style={{ color: "#8CA098" }}>{w}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((cell, idx) => {
+          if (!cell) return <div key={idx} />;
+          const hasEntries = cell.entries.length > 0;
+          const isOverdue = hasEntries && cell.dateStr < todayStr();
+          const isToday = cell.dateStr === todayStr();
+          return (
+            <button
+              key={idx}
+              onClick={() => hasEntries && onDayClick(cell.dateStr)}
+              disabled={!hasEntries}
+              className="aspect-square rounded-md flex items-center justify-center text-[11px] transition"
+              style={{
+                background: isOverdue ? "#FDECEA" : hasEntries ? "#EAF1F8" : "transparent",
+                border: isOverdue ? "1px dashed #E0665A" : hasEntries ? "1px dashed #2A5C8A" : isToday ? "1px solid #2A5C8A" : "1px solid transparent",
+                color: isOverdue ? CORAL : hasEntries ? "#2A5C8A" : isToday ? "#2A5C8A" : "#B0B8B5",
+                fontFamily: MONO_FONT,
+                fontWeight: hasEntries || isToday ? 600 : 400,
+                cursor: hasEntries ? "pointer" : "default",
+              }}
+              title={hasEntries ? `${cell.entries.length} zaplanowane` : ""}
+            >
+              {cell.day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMove, onJumpToMonth }) {
+  return (
+    <div className="rounded-xl overflow-hidden divide-y" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      {entries.map((e) => {
+        const entryMonth = e.data ? new Date(e.data + "T00:00:00").getMonth() : null;
+        return (
+          <div key={e.id} className="flex items-center gap-3 px-4 py-3 flex-wrap" style={{ borderColor: LINE_COLOR }}>
+            <div className="w-20 flex-shrink-0">
+              <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: overdue ? CORAL : PRIMARY_DARK }}>
+                {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
+              </div>
+              <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
+                {e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
+              </div>
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <div className="text-sm font-medium">{e.klient || <span style={{ color: "#C7D6CF" }}>Bez klienta</span>}</div>
+              <div className="text-xs" style={{ color: "#5B6E67" }}>{e.adres || e.opisUslugi || "—"}</div>
+            </div>
+            <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK, minWidth: 90 }}>
+              {e.zarobki ? fmtPLN(e.zarobki) : "—"}
+            </div>
+            <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 ${overdue ? "bg-red-50 text-red-700 border-red-200" : ORDER_STATUS_STYLES["Zaplanowane"]}`}>
+              {overdue ? <AlertTriangle size={11} /> : <OrderStatusIcon status="Zaplanowane" />}
+              {overdue ? "Zaległe" : "Zaplanowane"}
+            </span>
+            {entryMonth !== null && (
+              <button
+                onClick={() => onJumpToMonth(entryMonth)}
+                className="text-[11px] px-2 py-0.5 rounded-full font-medium transition hover:opacity-80 flex-shrink-0"
+                style={{ background: MINT, color: PRIMARY_DARK }}
+              >
+                {MONTH_NAMES[entryMonth]}
+              </button>
+            )}
+            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+              <button onClick={() => onSetStatus(e.id, "Wykonane")} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                <CheckCircle2 size={15} color={PRIMARY} />
+              </button>
+              <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                <Ban size={15} color="#8CA098" />
+              </button>
+              <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                <Move size={14} color="#2A5C8A" />
+              </button>
+              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                <Pencil size={14} color="#5B6E67" />
+              </button>
+              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                <Trash2 size={14} color={CORAL} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SummaryView({ yearData, onGoUpcoming }) {
+  return (
+    <div className="space-y-6">
+      <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
+        Podsumowanie roczne <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{YEAR}</span>
+      </h2>
+
+      <div className="flex gap-3 flex-wrap">
+        <KpiCard icon={Wallet} label="Zarobki (rok)" value={fmtPLN(yearData.totalZarobki)} accent={PRIMARY_DARK} />
+        <KpiCard icon={Receipt} label="Wydatki (rok)" value={fmtPLN(yearData.totalWydatki)} accent={CORAL} />
+        <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(yearData.totalZysk)} accent={PRIMARY_DARK} />
+        <KpiCard icon={Users} label="Liczba zleceń" value={yearData.totalZlecenia} />
+        <KpiCard icon={Percent} label="Marża zysku" value={fmtNum(yearData.marza * 100, "%")} />
+        {yearData.zaplanowaneLiczba > 0 && (
+          <KpiCard icon={CalendarClock} label="W planach" value={`${yearData.zaplanowaneLiczba} · ${fmtPLN(yearData.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={onGoUpcoming} />
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Zarobki i wydatki miesięczne">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={yearData.months} margin={{ top: 6, right: 6, left: -14, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={LINE_COLOR} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5B6E67" }} tickFormatter={(v) => v.slice(0, 3)} axisLine={{ stroke: LINE_COLOR }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#5B6E67" }} axisLine={false} tickLine={false} />
+              <Tooltip formatter={(v) => fmtPLN(v)} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${LINE_COLOR}` }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="zarobki" name="Zarobki" fill={PRIMARY} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="wydatki" name="Wydatki" fill={CORAL} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Zysk — miesięczny i narastająco">
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={yearData.months} margin={{ top: 6, right: 6, left: -14, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={LINE_COLOR} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5B6E67" }} tickFormatter={(v) => v.slice(0, 3)} axisLine={{ stroke: LINE_COLOR }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#5B6E67" }} axisLine={false} tickLine={false} />
+              <Tooltip formatter={(v) => fmtPLN(v)} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${LINE_COLOR}` }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="zysk" name="Zysk miesięczny" stroke={PRIMARY} strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="skumulowany" name="Zysk narastająco" stroke={GOLD} strokeWidth={2} strokeDasharray="5 3" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Wydatki wg kategorii">
+          {yearData.categories.length === 0 ? (
+            <EmptyChart />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie data={yearData.categories} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
+                  {yearData.categories.map((c) => (
+                    <Cell key={c.name} fill={CATEGORY_COLORS[c.name]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => fmtPLN(v)} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${LINE_COLOR}` }} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Top klienci wg przychodu">
+          {yearData.topClients.length === 0 ? (
+            <EmptyChart />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={yearData.topClients} layout="vertical" margin={{ top: 6, right: 20, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={LINE_COLOR} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: "#5B6E67" }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="klient" width={110} tick={{ fontSize: 11, fill: "#5B6E67" }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v) => fmtPLN(v)} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${LINE_COLOR}` }} />
+                <Bar dataKey="zarobki" name="Zarobki" fill={PRIMARY} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+      </div>
+
+      <MonthlyTable months={yearData.months} totals={yearData} />
+    </div>
+  );
+}
+
+function EmptyChart() {
+  return <div className="h-[260px] flex items-center justify-center text-sm" style={{ color: "#8CA098" }}>Brak danych do pokazania</div>;
+}
+
+function ChartCard({ title, children }) {
+  return (
+    <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      <h3 className="text-sm font-semibold mb-2" style={{ color: PRIMARY_DARK }}>{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function MonthlyTable({ months, totals }) {
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth: 760 }}>
+          <thead>
+            <tr style={{ background: "#F0F5F2" }}>
+              {["Miesiąc", "Godziny", "Zarobki", "Wydatki", "Zysk netto", "Śr. stawka", "Zlecenia", "Marża"].map((h) => (
+                <th key={h} className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#5B6E67" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {months.map((m, i) => (
+              <tr key={m.name} className="border-t" style={{ borderColor: LINE_COLOR, background: i % 2 ? "#FAFBFA" : "transparent" }}>
+                <td className="px-3 py-2 font-medium">{m.name}</td>
+                <td className="px-3 py-2" style={{ fontFamily: MONO_FONT }}>{m.godziny ? fmtNum(m.godziny, " h") : "—"}</td>
+                <td className="px-3 py-2" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK }}>{fmtPLN(m.zarobki)}</td>
+                <td className="px-3 py-2" style={{ fontFamily: MONO_FONT, color: CORAL }}>{fmtPLN(m.wydatki)}</td>
+                <td className="px-3 py-2 font-semibold" style={{ fontFamily: MONO_FONT }}>{fmtPLN(m.zysk)}</td>
+                <td className="px-3 py-2" style={{ fontFamily: MONO_FONT }}>{m.stawka > 0 ? fmtPLN(m.stawka) + "/h" : "—"}</td>
+                <td className="px-3 py-2">{m.liczbaZlecen}</td>
+                <td className="px-3 py-2">{fmtNum(m.marza * 100, "%")}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2" style={{ borderColor: PRIMARY, background: "#F0F5F2" }}>
+              <td className="px-3 py-2.5 font-bold">RAZEM ROK</td>
+              <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT }}>{fmtNum(totals.totalGodziny, " h")}</td>
+              <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK }}>{fmtPLN(totals.totalZarobki)}</td>
+              <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT, color: CORAL }}>{fmtPLN(totals.totalWydatki)}</td>
+              <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT }}>{fmtPLN(totals.totalZysk)}</td>
+              <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT }}>{fmtPLN(totals.stawka)}/h</td>
+              <td className="px-3 py-2.5 font-bold">{totals.totalZlecenia}</td>
+              <td className="px-3 py-2.5 font-bold">{fmtNum(totals.marza * 100, "%")}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Entry Form Modal                                                     */
+/* ------------------------------------------------------------------ */
+function FormField({ label, children }) {
+  return (
+    <label className="block">
+      <span className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "#5B6E67" }}>{label}</span>
+      {children}
+    </label>
+  );
+}
+const inputCls = "w-full px-3 py-2 rounded-lg text-sm border bg-white";
+
+function EntryFormModal({ form, isEditing, formType, onChange, onClose, onSave }) {
+  const showKlientFields = formType === "klient" || formType === "full";
+  const showZakupFields = formType === "zakup" || formType === "full";
+  const titles = { klient: "Zaplanuj zlecenie", zakup: "Nowe zakupy", full: "Edytuj wpis" };
+  const accentColor = formType === "zakup" ? CORAL : PRIMARY;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b" style={{ background: SURFACE, borderColor: LINE_COLOR }}>
+          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.15rem", fontWeight: 600, color: PRIMARY_DARK }}>
+            {isEditing ? (formType === "full" ? "Edytuj wpis" : formType === "zakup" ? "Edytuj zakup" : "Edytuj zlecenie") : titles[formType]}
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <FormField label="Data">
+            <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.data} onChange={(e) => onChange("data", e.target.value)} />
+          </FormField>
+
+          {showKlientFields && (
+            <>
+              {formType === "full" && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Users size={14} color={PRIMARY_DARK} />
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: PRIMARY_DARK }}>Zlecenie</span>
+                  <span className="flex-1 h-px" style={{ background: LINE_COLOR }} />
+                </div>
+              )}
+
+              <FormField label="Status zlecenia">
+                <div className="inline-flex rounded-lg border overflow-hidden w-full" style={{ borderColor: LINE_COLOR }}>
+                  {ORDER_STATUSES.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => onChange("statusZlecenia", s)}
+                      className="flex-1 px-2 py-2 text-xs font-medium transition"
+                      style={{
+                        background: form.statusZlecenia === s ? (s === "Zaplanowane" ? "#2A5C8A" : s === "Odwołane" ? "#8CA098" : PRIMARY) : "transparent",
+                        color: form.statusZlecenia === s ? "white" : "#5B6E67",
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Klient">
+                  <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.klient} onChange={(e) => onChange("klient", e.target.value)} placeholder="np. Izabela Kowal" />
+                </FormField>
+                <FormField label="Adres">
+                  <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.adres} onChange={(e) => onChange("adres", e.target.value)} placeholder="np. Bolesławiec" />
+                </FormField>
+              </div>
+
+              <FormField label="Opis usługi">
+                <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.opisUslugi} onChange={(e) => onChange("opisUslugi", e.target.value)} />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Godzina rozpoczęcia">
+                  <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godzinaStart} onChange={(e) => onChange("godzinaStart", e.target.value)} />
+                </FormField>
+                <FormField label="Przewidywany czas pracy (h)">
+                  <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 2" />
+                </FormField>
+              </div>
+
+              <FormField label="Zarobki (zł)">
+                <input type="number" step="0.01" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.zarobki} onChange={(e) => onChange("zarobki", e.target.value)} />
+              </FormField>
+
+              {(formType === "full" || isEditing) && (
+                <FormField label="Typ klienta">
+                  <select className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.typKlienta} onChange={(e) => onChange("typKlienta", e.target.value)}>
+                    <option value="">—</option>
+                    {CLIENT_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </FormField>
+              )}
+
+              <FormField label="Status płatności">
+                <select className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.status} onChange={(e) => onChange("status", e.target.value)}>
+                  <option value="">—</option>
+                  {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </FormField>
+
+              {formType === "full" && (
+                <FormField label="Uwagi (zlecenie)">
+                  <textarea className={inputCls} style={{ borderColor: LINE_COLOR, minHeight: 50 }} value={form.uwagi} onChange={(e) => onChange("uwagi", e.target.value)} />
+                </FormField>
+              )}
+            </>
+          )}
+
+          {showZakupFields && (
+            <>
+              {formType === "full" && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Receipt size={14} color={CORAL} />
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: CORAL }}>Zakupy</span>
+                  <span className="flex-1 h-px" style={{ background: LINE_COLOR }} />
+                </div>
+              )}
+
+              <FormField label="Opis wydatków">
+                <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.opisWydatkow} onChange={(e) => onChange("opisWydatkow", e.target.value)} placeholder="np. Płyny, paliwo…" autoFocus={formType === "zakup"} />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Kwota (zł)">
+                  <input type="number" step="0.01" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.wydatki} onChange={(e) => onChange("wydatki", e.target.value)} />
+                </FormField>
+                <FormField label="Kategoria wydatku">
+                  <select className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.kategoria} onChange={(e) => onChange("kategoria", e.target.value)}>
+                    <option value="">—</option>
+                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </FormField>
+              </div>
+
+              <FormField label={formType === "full" ? "Uwagi (zakupy)" : "Uwagi"}>
+                <textarea className={inputCls} style={{ borderColor: LINE_COLOR, minHeight: 50 }} value={form.uwagi} onChange={(e) => onChange("uwagi", e.target.value)} />
+              </FormField>
+            </>
+          )}
+
+          {formType === "klient" && (
+            <FormField label="Uwagi">
+              <textarea className={inputCls} style={{ borderColor: LINE_COLOR, minHeight: 60 }} value={form.uwagi} onChange={(e) => onChange("uwagi", e.target.value)} />
+            </FormField>
+          )}
+        </div>
+
+        <div className="sticky bottom-0 flex gap-2 px-5 py-4 border-t" style={{ background: SURFACE, borderColor: LINE_COLOR }}>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
+            Anuluj
+          </button>
+          <button
+            onClick={onSave}
+            disabled={!form.data}
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: accentColor }}
+          >
+            {isEditing ? "Zapisz zmiany" : formType === "zakup" ? "Dodaj zakup" : "Zaplanuj zlecenie"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MoveModal({ moveInfo, onChange, onClose, onSave }) {
+  const label = moveInfo.klient || moveInfo.opisWydatkow || "wpis";
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
+          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
+            Przenieś termin
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm" style={{ color: "#5B6E67" }}>
+            Przenosisz termin: <strong style={{ color: INK }}>{label}</strong>
+          </p>
+          <FormField label="Nowa data">
+            <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={moveInfo.newDate} onChange={(e) => onChange("newDate", e.target.value)} />
+          </FormField>
+          <FormField label="Nowa godzina (opcjonalnie)">
+            <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={moveInfo.newTime} onChange={(e) => onChange("newTime", e.target.value)} />
+          </FormField>
+        </div>
+        <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
+            Anuluj
+          </button>
+          <button
+            onClick={onSave}
+            disabled={!moveInfo.newDate}
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: "#2A5C8A" }}
+          >
+            Przenieś
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: SURFACE }}>
+        <h3 className="font-semibold mb-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", color: PRIMARY_DARK }}>{title}</h3>
+        <p className="text-sm mb-5" style={{ color: "#5B6E67" }}>{message}</p>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>Anuluj</button>
+          <button onClick={onConfirm} className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: CORAL }}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+</script>
+</body>
+</html>
