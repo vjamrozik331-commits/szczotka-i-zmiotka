@@ -226,6 +226,17 @@ function findConflict(entries, payload, excludeId) {
   return null;
 }
 
+// Sorts by date, then by time of day (entries without a time come after those with one,
+// on the same date), then by id as a final stable tiebreaker.
+function compareEntries(a, b) {
+  if (a.data !== b.data) return a.data < b.data ? -1 : 1;
+  const at = a.godzinaStart, bt = b.godzinaStart;
+  if (at && bt && at !== bt) return at < bt ? -1 : 1;
+  if (at && !bt) return -1;
+  if (!at && bt) return 1;
+  return a.id - b.id;
+}
+
 const emptyForm = {
   data: "", godzinaStart: "", klient: "", adres: "", opisUslugi: "usługi sprzątające", godziny: "",
   zarobki: "", wydatki: "", opisWydatkow: "", kategoria: "", typKlienta: "", status: "", uwagi: "",
@@ -320,7 +331,7 @@ function App() {
       ? entries.filter((e) => e.data && new Date(e.data + "T00:00:00").getFullYear() === year)
       : entries.filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year);
     return base
-      .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : a.id - b.id))
+      .sort(compareEntries)
       .filter((e) => {
         if (!search.trim()) return true;
         const s = search.toLowerCase();
@@ -400,8 +411,8 @@ function App() {
     const all = entries || [];
     const today = todayStr();
     const planned = all.filter((e) => e.statusZlecenia === "Zaplanowane" && e.data);
-    const overdue = planned.filter((e) => e.data < today).sort((a, b) => (a.data < b.data ? -1 : 1));
-    const upcoming = planned.filter((e) => e.data >= today).sort((a, b) => (a.data < b.data ? -1 : 1));
+    const overdue = planned.filter((e) => e.data < today).sort(compareEntries);
+    const upcoming = planned.filter((e) => e.data >= today).sort(compareEntries);
     const zarobkiPlanowane = planned.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
     const next7 = upcoming.filter((e) => {
       const d = new Date(e.data + "T00:00:00");
