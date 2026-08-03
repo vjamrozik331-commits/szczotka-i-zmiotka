@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <title>Szczotka i Zmiotka — Rejestr zleceń</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 
 <!-- iOS: uruchamianie jako pełnoekranowa aplikacja po dodaniu do ekranu głównego -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -74,6 +77,20 @@
 </style>
 </head>
 <body>
+<script>
+  // Za każdym uruchomieniem/otwarciem aplikacji wymuś jednorazowe pobranie
+  // najświeższej wersji z sieci (z pominięciem pamięci podręcznej przeglądarki/PWA),
+  // zamiast czekać aż stara wersja sama "wygaśnie".
+  (function () {
+    try {
+      var url = new URL(window.location.href);
+      if (!url.searchParams.has("v")) {
+        url.searchParams.set("v", Date.now().toString());
+        window.location.replace(url.toString());
+      }
+    } catch (e) {}
+  })();
+</script>
 <div id="root"></div>
 <script type="text/babel" data-presets="react" data-type="module">
 const { useState, useEffect, useMemo, useCallback } = React;
@@ -113,6 +130,7 @@ const CheckCircle2 = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d
 const Ban = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></Icon>;
 const Move = (p) => <Icon {...p}><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></Icon>;
 const Umbrella = (p) => <Icon {...p}><path d="M22 12a10 10 0 1 0-20 0"/><path d="M12 12v8a2 2 0 0 0 4 0"/><path d="M12 2v2"/><path d="M2 12h20"/></Icon>;
+const Shield = (p) => <Icon {...p}><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></Icon>;
 
 
 /* ------------------------------------------------------------------ */
@@ -284,6 +302,10 @@ function App() {
   const [editingClientId, setEditingClientId] = useState(null);
   const [clientForm, setClientForm] = useState({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "" });
   const [clientSearch, setClientSearch] = useState("");
+  const [showBackupsPanel, setShowBackupsPanel] = useState(false);
+  const [backupsList, setBackupsList] = useState([]);
+  const [backupsLoading, setBackupsLoading] = useState(false);
+  const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
   const [saveState, setSaveState] = useState("idle");
 
   // load from Firestore (real-time sync across devices) with localStorage fallback
@@ -365,10 +387,66 @@ function App() {
     } catch (e) {}
     if (window.firebaseDb) {
       setSaveState("saving");
-      window.firebaseDb.collection("app-data").doc("entries").set({ items: nextEntries, freeDays: nextFreeDays, clients: clientsToSave })
+      const docRef = window.firebaseDb.collection("app-data").doc("entries");
+      docRef.set({ items: nextEntries, freeDays: nextFreeDays, clients: clientsToSave })
         .then(() => setSaveState("saved"))
         .catch(() => setSaveState("error"));
+      // Automatyczna, codzienna kopia zapasowa — działa w tle, bez żadnej akcji użytkownika.
+      // Nadpisuje się przez cały dzień (zawsze trzyma najnowszy stan z danego dnia), a od
+      // północy zaczyna nowy, osobny dokument — więc z czasem powstaje historia dzień po dniu,
+      // z której można w razie czego przywrócić dane sprzed awarii czy pomyłki.
+      try {
+        const todayKey = todayStr();
+        docRef.collection("backups").doc(todayKey).set({
+          items: nextEntries, freeDays: nextFreeDays, clients: clientsToSave,
+          savedAt: Date.now(),
+        }).catch(() => {});
+      } catch (e) {}
     }
+  }
+
+  function exportBackupFile() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      items: entries, freeDays, clients,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `szczotka-i-zmiotka-kopia-${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function loadBackupsList() {
+    if (!window.firebaseDb) return;
+    setBackupsLoading(true);
+    window.firebaseDb.collection("app-data").doc("entries").collection("backups")
+      .orderBy(window.firebase.firestore.FieldPath.documentId(), "desc")
+      .limit(30)
+      .get()
+      .then((snap) => {
+        const list = [];
+        snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+        setBackupsList(list);
+        setBackupsLoading(false);
+      })
+      .catch(() => setBackupsLoading(false));
+  }
+
+  function restoreBackup(backup) {
+    const nextEntries = backup.items || [];
+    const nextFree = backup.freeDays || [];
+    const nextClients = backup.clients || [];
+    setEntries(nextEntries);
+    setFreeDays(nextFree);
+    setClients(nextClients);
+    syncToFirestore(nextEntries, nextFree, nextClients);
+    setConfirmRestoreBackup(null);
+    setShowBackupsPanel(false);
   }
 
 
@@ -772,7 +850,13 @@ function App() {
   return (
     <div className="min-h-screen" style={{ background: BG, fontFamily: BODY_FONT, color: INK }}>
       <FontImport />
-      <Header saveState={saveState} onReset={() => setResetPanelOpen(true)} year={year} onYearChange={setYear} />
+      <Header
+        saveState={saveState}
+        onReset={() => setResetPanelOpen(true)}
+        onBackups={() => { setShowBackupsPanel(true); loadBackupsList(); }}
+        year={year}
+        onYearChange={setYear}
+      />
 
       <TabBar
         activeTab={activeTab}
@@ -870,6 +954,27 @@ function App() {
           confirmLabel="Usuń dane"
           onConfirm={resetFromDate}
           onCancel={() => setConfirmResetFromDateOpen(false)}
+        />
+      )}
+
+      {showBackupsPanel && !confirmRestoreBackup && (
+        <BackupsPanel
+          backups={backupsList}
+          loading={backupsLoading}
+          hasFirebase={!!window.firebaseDb}
+          onExport={exportBackupFile}
+          onRestore={(b) => setConfirmRestoreBackup(b)}
+          onClose={() => setShowBackupsPanel(false)}
+        />
+      )}
+
+      {confirmRestoreBackup && (
+        <ConfirmModal
+          title="Przywrócić tę kopię zapasową?"
+          message={`Obecne dane zostaną zastąpione stanem z kopii z dnia ${confirmRestoreBackup.id.split("-").reverse().join(".")}. Wszystko, co dodałaś/eś od tego dnia, zostanie utracone. Tej operacji nie da się cofnąć.`}
+          confirmLabel="Przywróć"
+          onConfirm={() => restoreBackup(confirmRestoreBackup)}
+          onCancel={() => setConfirmRestoreBackup(null)}
         />
       )}
 
@@ -974,7 +1079,7 @@ function FontImport() {
 /* ------------------------------------------------------------------ */
 /* Header + Tabs                                                       */
 /* ------------------------------------------------------------------ */
-function Header({ saveState, onReset, year, onYearChange }) {
+function Header({ saveState, onReset, onBackups, year, onYearChange }) {
   return (
     <header className="border-b" style={{ borderColor: LINE_COLOR, background: SURFACE }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
@@ -1004,6 +1109,14 @@ function Header({ saveState, onReset, year, onYearChange }) {
             {saveState === "saving" && "Zapisywanie…"}
             {saveState === "error" && "Błąd zapisu"}
           </span>
+          <button
+            onClick={onBackups}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
+            style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}
+            title="Kopie zapasowe"
+          >
+            <Shield size={13} /> Kopie
+          </button>
           <button
             onClick={onReset}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
@@ -2206,6 +2319,78 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
           >
             Przenieś
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackupsPanel({ backups, loading, hasFirebase, onExport, onRestore, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
+            <Shield size={17} /> Kopie zapasowe
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
+          <div>
+            <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
+              Pobierz wszystkie swoje dane jako plik na telefon — dobra dodatkowa kopia niezależna od aplikacji.
+            </p>
+            <button
+              onClick={onExport}
+              className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
+              style={{ background: PRIMARY }}
+            >
+              Pobierz kopię teraz (plik)
+            </button>
+          </div>
+
+          <div className="h-px" style={{ background: LINE_COLOR }} />
+
+          <div>
+            <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
+              Aplikacja sama zapisuje codzienną kopię danych w chmurze — w razie pomyłki możesz wrócić do dowolnego dnia z ostatnich 30.
+            </p>
+            {!hasFirebase && (
+              <div className="text-xs p-3 rounded-lg" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
+                Automatyczne kopie w chmurze są dostępne tylko, gdy aplikacja jest połączona z bazą danych.
+              </div>
+            )}
+            {hasFirebase && loading && (
+              <div className="text-sm text-center py-6" style={{ color: "#8CA098" }}>Wczytywanie…</div>
+            )}
+            {hasFirebase && !loading && backups.length === 0 && (
+              <div className="text-sm text-center py-6" style={{ color: "#8CA098" }}>Jeszcze brak zapisanych kopii — pojawią się automatycznie po dzisiejszych zmianach.</div>
+            )}
+            {hasFirebase && !loading && backups.length > 0 && (
+              <div className="space-y-2">
+                {backups.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg" style={{ border: `1px solid ${LINE_COLOR}` }}>
+                    <div>
+                      <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: INK }}>
+                        {b.id.split("-").reverse().join(".")}
+                      </div>
+                      <div className="text-xs" style={{ color: "#8CA098" }}>
+                        {(b.items || []).length} wpisów · {(b.clients || []).length} klientów
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onRestore(b)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
+                      style={{ borderColor: PRIMARY, color: PRIMARY }}
+                    >
+                      Przywróć
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
