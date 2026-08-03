@@ -154,6 +154,7 @@ function OrderStatusIcon({ status, size = 11 }) {
 }
 const STORAGE_KEY = "szczotka-zmiotka-entries-v1";
 const STORAGE_KEY_FREE = "szczotka-zmiotka-freedays-v1";
+const STORAGE_KEY_CLIENTS = "szczotka-zmiotka-clients-v1";
 
 function categorize(desc) {
   if (!desc) return "";
@@ -237,15 +238,31 @@ function compareEntries(a, b) {
   return a.id - b.id;
 }
 
+// One-time migration helper: builds an explicit client list from historical entries
+// (used the first time the app runs, before a real "clients" list exists yet).
+function deriveClientsFromEntries(entries) {
+  const map = {};
+  const order = [];
+  (entries || [])
+    .filter((e) => e.klient && e.klient.trim())
+    .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+    .forEach((e) => {
+      if (!map[e.klient]) order.push(e.klient);
+      map[e.klient] = { name: e.klient, adres: e.adres || "", typKlienta: e.typKlienta || "", telefon: "", uwagi: "" };
+    });
+  return order.map((name, i) => ({ id: Date.now() + i, ...map[name] }));
+}
+
 const emptyForm = {
   data: "", godzinaStart: "", klient: "", adres: "", opisUslugi: "usługi sprzątające", godziny: "",
   zarobki: "", wydatki: "", opisWydatkow: "", kategoria: "", typKlienta: "", status: "", uwagi: "",
-  statusZlecenia: "",
+  statusZlecenia: "", saveClientToList: true,
 };
 
 function App() {
   const [entries, setEntries] = useState(null);
   const [freeDays, setFreeDays] = useState([]);
+  const [clients, setClients] = useState([]);
   const [year, setYear] = useState(DEFAULT_YEAR);
   const [activeTab, setActiveTab] = useState(new Date().getMonth() < 12 ? new Date().getMonth() : 0);
   const [view, setView] = useState("month"); // "month" | "summary" | "upcoming"
@@ -263,6 +280,10 @@ function App() {
   const [moveConflict, setMoveConflict] = useState(null);
   const [showFreeDayForm, setShowFreeDayForm] = useState(false);
   const [freeDayForm, setFreeDayForm] = useState({ start: "", end: "", opis: "" });
+  const [showClientForm, setShowClientForm] = useState(false);
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [clientForm, setClientForm] = useState({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "" });
+  const [clientSearch, setClientSearch] = useState("");
   const [saveState, setSaveState] = useState("idle");
 
   // load from Firestore (real-time sync across devices) with localStorage fallback
@@ -270,11 +291,15 @@ function App() {
     if (!window.firebaseDb) {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
+        const loadedEntries = raw ? JSON.parse(raw) : SEED_ENTRIES;
+        setEntries(loadedEntries);
         const rawFree = localStorage.getItem(STORAGE_KEY_FREE);
         setFreeDays(rawFree ? JSON.parse(rawFree) : []);
+        const rawClients = localStorage.getItem(STORAGE_KEY_CLIENTS);
+        setClients(rawClients ? JSON.parse(rawClients) : deriveClientsFromEntries(loadedEntries));
       } catch (e) {
         setEntries(SEED_ENTRIES);
+        setClients(deriveClientsFromEntries(SEED_ENTRIES));
       }
       return;
     }
@@ -282,21 +307,43 @@ function App() {
     const unsub = docRef.onSnapshot(
       (snap) => {
         if (snap.exists) {
-          setEntries(snap.data().items || []);
-          setFreeDays(snap.data().freeDays || []);
+          const data = snap.data();
+          setEntries(data.items || []);
+          setFreeDays(data.freeDays || []);
+          if (data.clients && data.clients.length > 0) {
+            setClients(data.clients);
+          } else {
+            const derived = deriveClientsFromEntries(data.items || []);
+            setClients(derived);
+            if (derived.length > 0) docRef.set({ clients: derived }, { merge: true }).catch(() => {});
+          }
+          setSaveState("saved");
+        } else if (snap.metadata.fromCache) {
+          // The device hasn't confirmed with the server yet — a cache-only "not found" is
+          // NOT reliable proof the document is missing. Treating it as missing here would
+          // (and previously did) overwrite real data with the starter sample the moment a
+          // fresh browser/tab opens before it's had a chance to sync. Just wait quietly for
+          // the next, server-confirmed snapshot instead of touching anything.
         } else {
-          docRef.set({ items: SEED_ENTRIES, freeDays: [] }).catch(() => {});
+          // Confirmed by the server itself: the document genuinely does not exist yet
+          // (e.g. very first run ever). Safe to seed.
+          const seededClients = deriveClientsFromEntries(SEED_ENTRIES);
+          docRef.set({ items: SEED_ENTRIES, freeDays: [], clients: seededClients }).catch(() => {});
           setEntries(SEED_ENTRIES);
           setFreeDays([]);
+          setClients(seededClients);
+          setSaveState("saved");
         }
-        setSaveState("saved");
       },
       () => {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
-          setEntries(raw ? JSON.parse(raw) : SEED_ENTRIES);
+          const loadedEntries = raw ? JSON.parse(raw) : SEED_ENTRIES;
+          setEntries(loadedEntries);
           const rawFree = localStorage.getItem(STORAGE_KEY_FREE);
           setFreeDays(rawFree ? JSON.parse(rawFree) : []);
+          const rawClients = localStorage.getItem(STORAGE_KEY_CLIENTS);
+          setClients(rawClients ? JSON.parse(rawClients) : deriveClientsFromEntries(loadedEntries));
         } catch (e) {
           setEntries(SEED_ENTRIES);
         }
@@ -309,14 +356,16 @@ function App() {
   // Firestore listener itself. This is what prevents a device that just loaded a
   // (possibly momentarily stale) snapshot from echoing it back and clobbering a
   // newer write made from another device in the meantime.
-  function syncToFirestore(nextEntries, nextFreeDays) {
+  function syncToFirestore(nextEntries, nextFreeDays, nextClients) {
+    const clientsToSave = nextClients !== undefined ? nextClients : clients;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextEntries));
       localStorage.setItem(STORAGE_KEY_FREE, JSON.stringify(nextFreeDays));
+      localStorage.setItem(STORAGE_KEY_CLIENTS, JSON.stringify(clientsToSave));
     } catch (e) {}
     if (window.firebaseDb) {
       setSaveState("saving");
-      window.firebaseDb.collection("app-data").doc("entries").set({ items: nextEntries, freeDays: nextFreeDays })
+      window.firebaseDb.collection("app-data").doc("entries").set({ items: nextEntries, freeDays: nextFreeDays, clients: clientsToSave })
         .then(() => setSaveState("saved"))
         .catch(() => setSaveState("error"));
     }
@@ -354,6 +403,39 @@ function App() {
       zaplanowaneLiczba: planned.length, zaplanowaneZarobki,
     };
   }, [entries, activeTab, year]);
+
+  const monthDetailLists = useMemo(() => {
+    const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year);
+    const zarobki = all.filter((e) => isRealized(e) && Number(e.zarobki) > 0).sort(compareEntries);
+    const wydatki = all.filter((e) => Number(e.wydatki) > 0).sort(compareEntries);
+    const zaplanowane = all.filter((e) => e.statusZlecenia === "Zaplanowane").sort(compareEntries);
+    return { zarobki, wydatki, zaplanowane };
+  }, [entries, activeTab, year]);
+
+  const knownClients = useMemo(() => {
+    const alphabetical = clients.slice().sort((a, b) => a.name.localeCompare(b.name, "pl"));
+    const byName = {};
+    clients.forEach((c) => { byName[c.name] = c; });
+    const seen = new Set();
+    const order = [];
+    (entries || [])
+      .filter((e) => e.klient && e.klient.trim())
+      .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+      .forEach((e) => {
+        if (!seen.has(e.klient)) { seen.add(e.klient); order.push(e.klient); }
+      });
+    const recent = order.slice().reverse().map((name) => byName[name] || { name, adres: "", typKlienta: "" }).slice(0, 8);
+    return { list: alphabetical, recent };
+  }, [clients, entries]);
+
+  function computeClientsAfterEntry(prevClients, name, adres, typKlienta) {
+    if (!name || !name.trim()) return prevClients;
+    const exists = prevClients.find((c) => c.name === name);
+    if (exists) {
+      return prevClients.map((c) => (c.name === name ? { ...c, adres: adres || c.adres, typKlienta: typKlienta || c.typKlienta } : c));
+    }
+    return [...prevClients, { id: Date.now() + Math.random(), name: name.trim(), adres: adres || "", typKlienta: typKlienta || "", telefon: "", uwagi: "" }];
+  }
 
   const yearData = useMemo(() => {
     const months = MONTH_NAMES.map((name, idx) => {
@@ -458,6 +540,17 @@ function App() {
     setShowForm(true);
   }, [activeTab, year]);
 
+  const openAddOrderForClient = useCallback((client) => {
+    setEditingId(null);
+    setFormType("klient");
+    const d = todayStr();
+    setForm({
+      ...emptyForm, data: d, statusZlecenia: defaultOrderStatus(d),
+      klient: client.name, adres: client.adres || "", typKlienta: client.typKlienta || "",
+    });
+    setShowForm(true);
+  }, []);
+
   const openEditForm = useCallback((entry) => {
     setEditingId(entry.id);
     const hasKlient = !!(entry.klient && entry.klient.trim());
@@ -483,8 +576,14 @@ function App() {
       if (field === "opisWydatkow" && !f.kategoria) {
         next.kategoria = categorize(value);
       }
-      if (field === "klient" && !f.typKlienta) {
-        next.typKlienta = classifyClient(value);
+      if (field === "klient") {
+        const known = knownClients.list.find((c) => c.name === value);
+        if (known) {
+          if (!f.adres) next.adres = known.adres;
+          if (known.typKlienta) next.typKlienta = known.typKlienta;
+        } else if (!f.typKlienta) {
+          next.typKlienta = classifyClient(value);
+        }
       }
       return next;
     });
@@ -517,8 +616,16 @@ function App() {
       const nextId = entries.length ? Math.max(...entries.map((e) => e.id)) + 1 : 1;
       next = [...entries, { ...payload, id: nextId }];
     }
+    let nextClients = clients;
+    if (payload.klient && payload.klient.trim()) {
+      const exists = clients.find((c) => c.name === payload.klient);
+      if (exists || form.saveClientToList) {
+        nextClients = computeClientsAfterEntry(clients, payload.klient, payload.adres, payload.typKlienta);
+      }
+    }
     setEntries(next);
-    syncToFirestore(next, freeDays);
+    if (nextClients !== clients) setClients(nextClients);
+    syncToFirestore(next, freeDays, nextClients);
     setShowForm(false);
   }
 
@@ -621,6 +728,37 @@ function App() {
     syncToFirestore(entries, next);
   }
 
+  function openAddClientRecord() {
+    setEditingClientId(null);
+    setClientForm({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "" });
+    setShowClientForm(true);
+  }
+
+  function openEditClientRecord(client) {
+    setEditingClientId(client.id);
+    setClientForm({ name: client.name || "", adres: client.adres || "", telefon: client.telefon || "", typKlienta: client.typKlienta || "", uwagi: client.uwagi || "" });
+    setShowClientForm(true);
+  }
+
+  function saveClientRecord() {
+    if (!clientForm.name.trim()) return;
+    let next;
+    if (editingClientId) {
+      next = clients.map((c) => (c.id === editingClientId ? { ...c, ...clientForm, name: clientForm.name.trim() } : c));
+    } else {
+      next = [...clients, { id: Date.now() + Math.random(), ...clientForm, name: clientForm.name.trim() }];
+    }
+    setClients(next);
+    syncToFirestore(entries, freeDays, next);
+    setShowClientForm(false);
+  }
+
+  function deleteClientRecord(id) {
+    const next = clients.filter((c) => c.id !== id);
+    setClients(next);
+    syncToFirestore(entries, freeDays, next);
+  }
+
   if (entries === null) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
@@ -651,6 +789,7 @@ function App() {
         onAddFreeDay={() => openFreeDayForm()}
         onGoUpcoming={() => setView("upcoming")}
         onGoSummary={() => setView("summary")}
+        onGoClients={() => setView("clients")}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-24 pt-4">
@@ -659,6 +798,7 @@ function App() {
             monthName={MONTH_NAMES[activeTab]}
             year={year}
             summary={monthSummary}
+            detailLists={monthDetailLists}
             entries={monthEntries}
             calendarCells={calendarCells}
             freeDays={freeDays.filter((d) => d.date.startsWith(`${year}-${String(activeTab + 1).padStart(2, "0")}`))}
@@ -688,6 +828,18 @@ function App() {
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
         )}
+        {view === "clients" && (
+          <ClientsView
+            clients={clients}
+            entries={entries}
+            search={clientSearch}
+            setSearch={setClientSearch}
+            onAdd={openAddClientRecord}
+            onEdit={openEditClientRecord}
+            onDelete={deleteClientRecord}
+            onAddOrder={openAddOrderForClient}
+          />
+        )}
       </main>
 
       {showForm && !conflictInfo && (
@@ -695,6 +847,7 @@ function App() {
           form={form}
           isEditing={!!editingId}
           formType={formType}
+          knownClients={knownClients}
           onChange={handleFormChange}
           onClose={() => setShowForm(false)}
           onSave={saveEntry}
@@ -771,6 +924,16 @@ function App() {
           onChange={(field, value) => setFreeDayForm((f) => ({ ...f, [field]: value }))}
           onClose={() => setShowFreeDayForm(false)}
           onSave={saveFreeDays}
+        />
+      )}
+
+      {showClientForm && (
+        <ClientFormModal
+          form={clientForm}
+          isEditing={!!editingClientId}
+          onChange={(field, value) => setClientForm((f) => ({ ...f, [field]: value }))}
+          onClose={() => setShowClientForm(false)}
+          onSave={saveClientRecord}
         />
       )}
     </div>
@@ -889,7 +1052,7 @@ function TabBar({ activeTab, view, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoSummary }) {
+function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoSummary, onGoClients }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
       <div className="flex gap-2 flex-wrap">
@@ -915,6 +1078,13 @@ function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onAddFreeD
           <Umbrella size={15} /> Dzień wolny
         </button>
         <span className="w-px my-1" style={{ background: LINE_COLOR }} />
+        <button
+          onClick={onGoClients}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+          style={{ background: view === "clients" ? PRIMARY_DARK : "#F0EDE6", color: view === "clients" ? "white" : "#6B5D4A" }}
+        >
+          <Users size={14} /> Baza klientów
+        </button>
         <button
           onClick={onGoUpcoming}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
@@ -967,7 +1137,9 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onRemoveFreeDay, onGoUpcoming }) {
+function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onRemoveFreeDay, onGoUpcoming }) {
+  const [detail, setDetail] = useState(null); // "zarobki" | "wydatki" | "zaplanowane" | "wolne" | null
+
   return (
     <div className="space-y-5">
       <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
@@ -975,16 +1147,16 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
       </h2>
 
       <div className="flex gap-3 flex-wrap">
-        <KpiCard icon={Wallet} label="Zarobki (wykonane)" value={fmtPLN(summary.zarobki)} accent={PRIMARY_DARK} />
-        <KpiCard icon={Receipt} label="Wydatki" value={fmtPLN(summary.wydatki)} accent={CORAL} />
+        <KpiCard icon={Wallet} label="Zarobki (wykonane)" value={fmtPLN(summary.zarobki)} accent={PRIMARY_DARK} onClick={() => setDetail("zarobki")} />
+        <KpiCard icon={Receipt} label="Wydatki" value={fmtPLN(summary.wydatki)} accent={CORAL} onClick={() => setDetail("wydatki")} />
         <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(summary.zysk)} accent={summary.zysk >= 0 ? PRIMARY_DARK : CORAL} />
         <KpiCard icon={Users} label="Liczba zleceń" value={summary.liczbaZlecen} />
         <KpiCard icon={Clock} label="Śr. stawka" value={summary.stawka > 0 ? fmtPLN(summary.stawka) + "/h" : "—"} />
         {summary.zaplanowaneLiczba > 0 && (
-          <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={onGoUpcoming} />
+          <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={() => setDetail("zaplanowane")} />
         )}
         {freeDays.length > 0 && (
-          <KpiCard icon={Umbrella} label="Dni wolne" value={freeDays.length} accent="#8A6A1F" />
+          <KpiCard icon={Umbrella} label="Dni wolne" value={freeDays.length} accent="#8A6A1F" onClick={() => setDetail("wolne")} />
         )}
       </div>
 
@@ -1007,6 +1179,17 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
           </div>
         </div>
       )}
+
+      {detail && (
+        <KpiDetailModal
+          type={detail}
+          entries={detailLists[detail] || []}
+          freeDays={freeDays}
+          onEdit={onEdit}
+          onClose={() => setDetail(null)}
+        />
+      )}
+
 
       <div className="flex items-center gap-2 flex-wrap">
         <input
@@ -1411,6 +1594,151 @@ function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMove,
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Clients View — baza klientów (dodaj / edytuj / usuń)                 */
+/* ------------------------------------------------------------------ */
+function ClientsView({ clients, entries, search, setSearch, onAdd, onEdit, onDelete, onAddOrder }) {
+  const stats = useMemo(() => {
+    const map = {};
+    (entries || []).forEach((e) => {
+      if (!e.klient || !e.klient.trim()) return;
+      if (!map[e.klient]) map[e.klient] = { zarobki: 0, liczba: 0 };
+      if (isRealized(e)) map[e.klient].zarobki += Number(e.zarobki) || 0;
+      map[e.klient].liczba += 1;
+    });
+    return map;
+  }, [entries]);
+
+  const filtered = clients
+    .filter((c) => {
+      if (!search.trim()) return true;
+      const s = search.toLowerCase();
+      return c.name.toLowerCase().includes(s) || (c.adres || "").toLowerCase().includes(s);
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "pl"));
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
+          Baza klientów
+        </h2>
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90"
+          style={{ background: PRIMARY }}
+        >
+          <Plus size={15} /> Dodaj klienta
+        </button>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Szukaj po nazwie lub adresie…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full sm:w-80 px-3 py-2 rounded-lg text-sm border"
+        style={{ borderColor: LINE_COLOR, background: SURFACE }}
+      />
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          {clients.length === 0 ? "Brak klientów w bazie. Dodaj pierwszego, żeby móc go wybierać z listy przy planowaniu zleceń." : "Brak wyników dla podanej frazy."}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {filtered.map((c) => {
+            const s = stats[c.name] || { zarobki: 0, liczba: 0 };
+            return (
+              <div key={c.id} className="rounded-xl p-4 flex flex-col gap-2" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold" style={{ color: INK }}>{c.name}</div>
+                    {c.adres && <div className="text-xs" style={{ color: "#8CA098" }}>{c.adres}</div>}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => onAddOrder(c)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Zaplanuj zlecenie dla tego klienta">
+                      <CalendarClock size={14} color={PRIMARY} />
+                    </button>
+                    <button onClick={() => onEdit(c)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                      <Pencil size={14} color="#5B6E67" />
+                    </button>
+                    <button onClick={() => onDelete(c.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                      <Trash2 size={14} color={CORAL} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-xs" style={{ color: "#5B6E67" }}>
+                  {c.telefon && <span>📞 {c.telefon}</span>}
+                  {c.typKlienta && (
+                    <span className="px-2 py-0.5 rounded-full" style={{ background: MINT, color: PRIMARY_DARK }}>{c.typKlienta}</span>
+                  )}
+                </div>
+                {c.uwagi && <div className="text-xs italic" style={{ color: "#8CA098" }}>{c.uwagi}</div>}
+                {s.liczba > 0 && (
+                  <div className="text-xs pt-1 border-t" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
+                    {s.liczba} {s.liczba === 1 ? "zlecenie" : "zleceń"} · <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(s.zarobki)}</span> łącznie
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
+          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
+            {isEditing ? "Edytuj klienta" : "Nowy klient"}
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <FormField label="Nazwa">
+            <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.name} onChange={(e) => onChange("name", e.target.value)} placeholder="np. Izabela Kowal" />
+          </FormField>
+          <FormField label="Adres">
+            <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.adres} onChange={(e) => onChange("adres", e.target.value)} placeholder="np. Bolesławiec" />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Telefon">
+              <input type="tel" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.telefon} onChange={(e) => onChange("telefon", e.target.value)} placeholder="np. 600 123 456" />
+            </FormField>
+            <FormField label="Typ klienta">
+              <select className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.typKlienta} onChange={(e) => onChange("typKlienta", e.target.value)}>
+                <option value="">—</option>
+                {CLIENT_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Uwagi">
+            <textarea className={inputCls} style={{ borderColor: LINE_COLOR, minHeight: 60 }} value={form.uwagi} onChange={(e) => onChange("uwagi", e.target.value)} placeholder="np. kod do domofonu, ma psa…" />
+          </FormField>
+        </div>
+        <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
+            Anuluj
+          </button>
+          <button
+            onClick={onSave}
+            disabled={!form.name.trim()}
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: PRIMARY }}
+          >
+            Zapisz
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SummaryView({ yearData, year, onGoUpcoming }) {
   return (
     <div className="space-y-6">
@@ -1566,11 +1894,13 @@ function FormField({ label, children }) {
 }
 const inputCls = "w-full px-3 py-2 rounded-lg text-sm border bg-white";
 
-function EntryFormModal({ form, isEditing, formType, onChange, onClose, onSave }) {
+function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onClose, onSave }) {
   const showKlientFields = formType === "klient" || formType === "full";
   const showZakupFields = formType === "zakup" || formType === "full";
   const titles = { klient: "Zaplanuj zlecenie", zakup: "Nowe zakupy", full: "Edytuj wpis" };
   const accentColor = formType === "zakup" ? CORAL : PRIMARY;
+  const isKnownClientName = form.klient && knownClients.list.some((c) => c.name === form.klient);
+  const [showNewClientInput, setShowNewClientInput] = useState(!!form.klient && !isKnownClientName);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
@@ -1618,12 +1948,56 @@ function EntryFormModal({ form, isEditing, formType, onChange, onClose, onSave }
 
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Klient">
-                  <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.klient} onChange={(e) => onChange("klient", e.target.value)} placeholder="np. Izabela Kowal" />
+                  <select
+                    className={inputCls}
+                    style={{ borderColor: LINE_COLOR }}
+                    value={showNewClientInput ? "__new__" : form.klient}
+                    onChange={(e) => {
+                      if (e.target.value === "__new__") {
+                        setShowNewClientInput(true);
+                        onChange("klient", "");
+                      } else {
+                        setShowNewClientInput(false);
+                        onChange("klient", e.target.value);
+                      }
+                    }}
+                  >
+                    <option value="">— Wybierz klienta —</option>
+                    {knownClients.list.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    <option value="__new__">➕ Nowy klient (wpisz ręcznie)</option>
+                  </select>
                 </FormField>
                 <FormField label="Adres">
                   <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.adres} onChange={(e) => onChange("adres", e.target.value)} placeholder="np. Bolesławiec" />
                 </FormField>
               </div>
+
+              {showNewClientInput && (
+                <FormField label="Imię i nazwisko / nazwa nowego klienta">
+                  <input
+                    type="text"
+                    autoFocus
+                    className={inputCls}
+                    style={{ borderColor: LINE_COLOR }}
+                    value={form.klient}
+                    onChange={(e) => onChange("klient", e.target.value)}
+                    placeholder="np. Izabela Kowal"
+                  />
+                </FormField>
+              )}
+
+              {form.klient.trim() && !knownClients.list.find((c) => c.name === form.klient.trim()) && (
+                <label className="flex items-center gap-2 text-sm -mt-1" style={{ color: "#5B6E67" }}>
+                  <input
+                    type="checkbox"
+                    checked={form.saveClientToList}
+                    onChange={(e) => onChange("saveClientToList", e.target.checked)}
+                    className="w-4 h-4 rounded"
+                    style={{ accentColor: PRIMARY }}
+                  />
+                  Dodaj „{form.klient.trim()}” do bazy klientów
+                </label>
+              )}
 
               <FormField label="Opis usługi">
                 <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.opisUslugi} onChange={(e) => onChange("opisUslugi", e.target.value)} />
@@ -1717,6 +2091,81 @@ function EntryFormModal({ form, isEditing, formType, onChange, onClose, onSave }
           >
             {isEditing ? "Zapisz zmiany" : formType === "zakup" ? "Dodaj zakup" : "Zaplanuj zlecenie"}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const DETAIL_CONFIG = {
+  zarobki: { title: "Zarobki (wykonane)", icon: Wallet, color: PRIMARY_DARK, empty: "Brak zarobków w tym miesiącu." },
+  wydatki: { title: "Wydatki", icon: Receipt, color: CORAL, empty: "Brak wydatków w tym miesiącu." },
+  zaplanowane: { title: "Zaplanowane zlecenia", icon: CalendarClock, color: "#2A5C8A", empty: "Brak zaplanowanych zleceń w tym miesiącu." },
+  wolne: { title: "Dni wolne", icon: Umbrella, color: "#8A6A1F", empty: "Brak dni wolnych w tym miesiącu." },
+};
+
+function KpiDetailModal({ type, entries, freeDays, onEdit, onClose }) {
+  const cfg = DETAIL_CONFIG[type];
+  const Icon = cfg.icon;
+  const isFreeDays = type === "wolne";
+  const items = isFreeDays ? freeDays.slice().sort((a, b) => a.date.localeCompare(b.date)) : entries;
+  const amountKey = type === "wydatki" ? "wydatki" : "zarobki";
+  const total = isFreeDays ? null : items.reduce((s, e) => s + (Number(e[amountKey]) || 0), 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: cfg.color }}>
+            <Icon size={17} /> {cfg.title}
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+
+        {total !== null && (
+          <div className="px-5 py-3 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: LINE_COLOR, background: "#FAFBFA" }}>
+            <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "#5B6E67" }}>Razem ({items.length})</span>
+            <span style={{ fontFamily: MONO_FONT, fontWeight: 700, fontSize: "1.05rem", color: cfg.color }}>{fmtPLN(total)}</span>
+          </div>
+        )}
+
+        <div className="overflow-y-auto flex-1">
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>{cfg.empty}</div>
+          ) : isFreeDays ? (
+            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+              {items.map((fd) => (
+                <div key={fd.id} className="px-5 py-3 flex items-center gap-3">
+                  <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: 56 }}>
+                    {fd.date.slice(8, 10)}.{fd.date.slice(5, 7)}
+                  </div>
+                  <div className="text-sm capitalize" style={{ color: "#5B6E67" }}>{weekdayName(fd.date)}</div>
+                  {fd.opis && <div className="text-sm ml-auto" style={{ color: INK }}>{fd.opis}</div>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+              {items.map((e) => (
+                <button
+                  key={e.id}
+                  onClick={() => { onEdit(e); onClose(); }}
+                  className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition"
+                >
+                  <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: cfg.color, minWidth: 56 }}>
+                    {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
+                    {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
+                  </div>
+                  <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: cfg.color, flexShrink: 0 }}>
+                    {fmtPLN(Number(e[amountKey]) || 0)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
