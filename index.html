@@ -299,6 +299,8 @@ function App() {
   const [clientForm, setClientForm] = useState({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "" });
   const [clientSearch, setClientSearch] = useState("");
   const [showBackupsPanel, setShowBackupsPanel] = useState(false);
+  const [confirmDoneEntry, setConfirmDoneEntry] = useState(null);
+  const [doneForm, setDoneForm] = useState({ zarobki: "", godziny: "" });
   const [backupsList, setBackupsList] = useState([]);
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
@@ -784,6 +786,28 @@ function App() {
     syncToFirestore(next, freeDays);
   }
 
+  function openMarkDone(entry) {
+    setConfirmDoneEntry(entry);
+    setDoneForm({ zarobki: entry.zarobki ?? "", godziny: entry.godziny ?? "" });
+  }
+
+  function confirmMarkDone() {
+    if (!confirmDoneEntry) return;
+    const next = entries.map((e) =>
+      e.id === confirmDoneEntry.id
+        ? {
+            ...e,
+            statusZlecenia: "Wykonane",
+            zarobki: doneForm.zarobki === "" ? e.zarobki : Number(doneForm.zarobki),
+            godziny: doneForm.godziny === "" ? e.godziny : Number(doneForm.godziny),
+          }
+        : e
+    );
+    setEntries(next);
+    syncToFirestore(next, freeDays);
+    setConfirmDoneEntry(null);
+  }
+
   function openMove(entry) {
     setMoveInfo({ id: entry.id, klient: entry.klient, opisWydatkow: entry.opisWydatkow, newDate: entry.data, newTime: entry.godzinaStart || "" });
   }
@@ -946,6 +970,7 @@ function App() {
             onDelete={deleteEntry}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setSearch(""); }}
             onSetStatus={setEntryStatus}
+            onMarkDone={openMarkDone}
             onMove={openMove}
             onRemoveFreeDay={removeFreeDay}
             onGoUpcoming={() => setView("upcoming")}
@@ -959,6 +984,7 @@ function App() {
             onEdit={openEditForm}
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
+            onMarkDone={openMarkDone}
             onMove={openMove}
             onAddForDay={(dateStr) => openAddClientForm(dateStr)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
@@ -970,6 +996,7 @@ function App() {
             onEdit={openEditForm}
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
+            onMarkDone={openMarkDone}
             onMove={openMove}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
@@ -1023,6 +1050,16 @@ function App() {
           confirmLabel="Przywróć"
           onConfirm={() => restoreBackup(confirmRestoreBackup)}
           onCancel={() => setConfirmRestoreBackup(null)}
+        />
+      )}
+
+      {confirmDoneEntry && (
+        <MarkDoneModal
+          entry={confirmDoneEntry}
+          form={doneForm}
+          onChange={(field, value) => setDoneForm((f) => ({ ...f, [field]: value }))}
+          onConfirm={confirmMarkDone}
+          onCancel={() => setConfirmDoneEntry(null)}
         />
       )}
 
@@ -1315,7 +1352,7 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onRemoveFreeDay, onGoUpcoming }) {
+function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onGoUpcoming }) {
   const [detail, setDetail] = useState(null); // "zarobki" | "wydatki" | "zaplanowane" | "wolne" | null
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
 
@@ -1380,6 +1417,7 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
           onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
+          onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
           onMove={(e) => { onMove(e); setDayDetail(null); }}
           onClose={() => setDayDetail(null)}
         />
@@ -1418,7 +1456,7 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
         </p>
       )}
 
-      <EntriesTable entries={entries} onEdit={onEdit} onDelete={onDelete} showMonth={isYearSearch} onJumpToMonth={onJumpToMonth} onSetStatus={onSetStatus} onMove={onMove} />
+      <EntriesTable entries={entries} onEdit={onEdit} onDelete={onDelete} showMonth={isYearSearch} onJumpToMonth={onJumpToMonth} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} />
     </div>
   );
 }
@@ -1479,7 +1517,7 @@ function CalendarStrip({ cells, onDayClick }) {
   );
 }
 
-function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onSetStatus, onMove }) {
+function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onSetStatus, onMarkDone, onMove }) {
   if (entries.length === 0) {
     return (
       <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
@@ -1570,7 +1608,7 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1 justify-end">
                       {isPlanned && (
-                        <button onClick={() => onSetStatus(e.id, "Wykonane")} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
                           <CheckCircle2 size={14} color={PRIMARY} />
                         </button>
                       )}
@@ -1603,7 +1641,7 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
 /* ------------------------------------------------------------------ */
 /* Upcoming View — planowanie i nadzór przyszłych zleceń                */
 /* ------------------------------------------------------------------ */
-function OverdueView({ overdue, onEdit, onDelete, onSetStatus, onMove, onJumpToMonth }) {
+function OverdueView({ overdue, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onJumpToMonth }) {
   const totalValue = overdue.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
 
   return (
@@ -1622,13 +1660,13 @@ function OverdueView({ overdue, onEdit, onDelete, onSetStatus, onMove, onJumpToM
           Brak zaległych zleceń — wszystko na bieżąco. 🎉
         </div>
       ) : (
-        <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+        <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
       )}
     </div>
   );
 }
 
-function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMove, onAddForDay, onJumpToMonth }) {
+function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const { overdue, upcoming, zarobkiPlanowane, liczba, next7count } = data;
   const isEmpty = overdue.length === 0 && upcoming.length === 0;
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
@@ -1685,7 +1723,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMove, on
           <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5" style={{ color: CORAL }}>
             <AlertTriangle size={14} /> Zaległe — minęła data, zaktualizuj status ({overdue.length})
           </h3>
-          <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+          <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
         </div>
       )}
 
@@ -1694,7 +1732,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMove, on
           <h3 className="text-sm font-semibold mb-2" style={{ color: PRIMARY_DARK }}>
             Nadchodzące ({upcoming.length})
           </h3>
-          <UpcomingList entries={upcoming} onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+          <UpcomingList entries={upcoming} onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
         </div>
       )}
 
@@ -1706,6 +1744,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMove, on
           onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
+          onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
           onMove={(e) => { onMove(e); setDayDetail(null); }}
           onClose={() => setDayDetail(null)}
         />
@@ -1775,7 +1814,7 @@ function MiniMonthCalendar({ year, month, entries, onDayClick }) {
   );
 }
 
-function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMove, onJumpToMonth }) {
+function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onJumpToMonth }) {
   return (
     <div className="rounded-xl overflow-hidden divide-y" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
       {entries.map((e) => {
@@ -1811,7 +1850,7 @@ function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMove,
               </button>
             )}
             <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-              <button onClick={() => onSetStatus(e.id, "Wykonane")} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+              <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
                 <CheckCircle2 size={15} color={PRIMARY} />
               </button>
               <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
@@ -2351,7 +2390,7 @@ const ORDER_STATUS_BADGE = {
   "Odwołane": { bg: "#F1F1EF", color: "#8CA098", Icon: Ban },
 };
 
-function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetStatus, onMove, onClose }) {
+function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetStatus, onMarkDone, onMove, onClose }) {
   const sorted = entries.slice().sort(compareEntries);
   const dateLabel = dateStr ? `${dateStr.slice(8, 10)}.${dateStr.slice(5, 7)}.${dateStr.slice(0, 4)}` : "";
 
@@ -2394,7 +2433,7 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
                     </div>
                     <div className="flex items-center gap-0.5 flex-shrink-0 ml-auto">
                       {isPlanned && (
-                        <button onClick={() => onSetStatus(e.id, "Wykonane")} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
                           <CheckCircle2 size={15} color={PRIMARY} />
                         </button>
                       )}
@@ -2685,6 +2724,58 @@ function FreeDayModal({ form, onChange, onClose, onSave }) {
             style={{ background: "#C99A2E" }}
           >
             Zapisz
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarkDoneModal({ entry, form, onChange, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
+          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
+            <CheckCircle2 size={17} color={PRIMARY} /> Oznacz jako wykonane
+          </h3>
+          <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm" style={{ color: "#5B6E67" }}>
+            {entry?.klient ? <>Zlecenie: <strong style={{ color: INK }}>{entry.klient}</strong></> : "Uzupełnij podsumowanie zlecenia."}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Zarobki (zł)">
+              <input
+                type="number" step="0.01" autoFocus
+                className={inputCls} style={{ borderColor: LINE_COLOR }}
+                value={form.zarobki}
+                onChange={(e) => onChange("zarobki", e.target.value)}
+                placeholder="np. 260"
+              />
+            </FormField>
+            <FormField label="Czas pracy (h)">
+              <input
+                type="number" step="0.5"
+                className={inputCls} style={{ borderColor: LINE_COLOR }}
+                value={form.godziny}
+                onChange={(e) => onChange("godziny", e.target.value)}
+                placeholder="np. 2"
+              />
+            </FormField>
+          </div>
+        </div>
+        <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
+          <button onClick={onCancel} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
+            Anuluj
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
+            style={{ background: PRIMARY }}
+          >
+            Oznacz jako wykonane
           </button>
         </div>
       </div>
