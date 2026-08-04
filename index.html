@@ -1342,7 +1342,7 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
         )}
       </div>
 
-      {!isYearSearch && <CalendarStrip cells={calendarCells} onDayClick={(dateStr, dayEntries) => setDayDetail({ dateStr, entries: dayEntries })} />}
+      {!isYearSearch && <CalendarStrip cells={calendarCells} onDayClick={(dateStr) => setDayDetail(dateStr)} />}
 
       {!isYearSearch && freeDays.length > 0 && (
         <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
@@ -1374,10 +1374,13 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
 
       {dayDetail && (
         <DayDetailModal
-          dateStr={dayDetail.dateStr}
-          entries={dayDetail.entries}
+          dateStr={dayDetail}
+          entries={(calendarCells.find((c) => c && c.dateStr === dayDetail) || {}).entries || []}
           onEdit={(e) => { onEdit(e); setDayDetail(null); }}
           onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMove={(e) => { onMove(e); setDayDetail(null); }}
           onClose={() => setDayDetail(null)}
         />
       )}
@@ -1671,7 +1674,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMove, on
               year={g.year}
               month={g.month}
               entries={g.entries}
-              onDayClick={(dateStr) => setDayDetail({ dateStr, entries: (entries || []).filter((e) => e.data === dateStr) })}
+              onDayClick={(dateStr) => setDayDetail(dateStr)}
             />
           ))}
         </div>
@@ -1697,10 +1700,13 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMove, on
 
       {dayDetail && (
         <DayDetailModal
-          dateStr={dayDetail.dateStr}
-          entries={dayDetail.entries}
+          dateStr={dayDetail}
+          entries={(entries || []).filter((e) => e.data === dayDetail)}
           onEdit={(e) => { onEdit(e); setDayDetail(null); }}
           onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMove={(e) => { onMove(e); setDayDetail(null); }}
           onClose={() => setDayDetail(null)}
         />
       )}
@@ -2345,13 +2351,13 @@ const ORDER_STATUS_BADGE = {
   "Odwołane": { bg: "#F1F1EF", color: "#8CA098", Icon: Ban },
 };
 
-function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onClose }) {
+function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetStatus, onMove, onClose }) {
   const sorted = entries.slice().sort(compareEntries);
   const dateLabel = dateStr ? `${dateStr.slice(8, 10)}.${dateStr.slice(5, 7)}.${dateStr.slice(0, 4)}` : "";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
-      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+      <div className="w-full sm:max-w-lg max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
         <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
           <h3 className="flex items-center gap-2 capitalize" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
             {dateStr && weekdayName(dateStr)}, {dateLabel}
@@ -2366,20 +2372,18 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onClose }) {
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {sorted.map((e) => {
                 const isZakup = !e.klient && e.opisWydatkow;
+                const isCancelled = e.statusZlecenia === "Odwołane";
+                const isPlanned = e.statusZlecenia === "Zaplanowane";
                 const badge = !isZakup ? ORDER_STATUS_BADGE[e.statusZlecenia] || ORDER_STATUS_BADGE["Wykonane"] : null;
                 return (
-                  <button
-                    key={e.id}
-                    onClick={() => onEdit(e)}
-                    className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition"
-                  >
+                  <div key={e.id} className="flex items-center gap-3 px-5 py-3 flex-wrap">
                     <div style={{ fontFamily: MONO_FONT, fontSize: "0.8rem", color: "#8CA098", minWidth: 44 }}>
                       {e.godzinaStart || "—"}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <button onClick={() => onEdit(e)} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
                       <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
                       {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
-                    </div>
+                    </button>
                     {badge && (
                       <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: badge.bg, color: badge.color }}>
                         <badge.Icon size={9} /> {e.statusZlecenia}
@@ -2388,7 +2392,30 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onClose }) {
                     <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isZakup ? CORAL : PRIMARY_DARK, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
                       {fmtPLN(Number(isZakup ? e.wydatki : e.zarobki) || 0)}
                     </div>
-                  </button>
+                    <div className="flex items-center gap-0.5 flex-shrink-0 ml-auto">
+                      {isPlanned && (
+                        <button onClick={() => onSetStatus(e.id, "Wykonane")} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                          <CheckCircle2 size={15} color={PRIMARY} />
+                        </button>
+                      )}
+                      {!isZakup && !isCancelled && (
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                          <Ban size={15} color="#8CA098" />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                          <Move size={14} color="#2A5C8A" />
+                        </button>
+                      )}
+                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
