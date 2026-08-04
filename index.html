@@ -445,6 +445,51 @@ function App() {
     setShowBackupsPanel(false);
   }
 
+  function handleImportFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!Array.isArray(parsed.items)) throw new Error("Nieprawidłowy format pliku");
+        setConfirmRestoreBackup({
+          fromFile: true,
+          fileName: file.name,
+          exportedAt: parsed.exportedAt,
+          items: parsed.items || [],
+          freeDays: parsed.freeDays || [],
+          clients: parsed.clients || [],
+        });
+      } catch (err) {
+        alert("Nie udało się odczytać tego pliku — upewnij się, że to plik kopii zapasowej wygenerowany przez tę aplikację.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function importBackupFile(file) {
+    if (!file) return;
+    setImportError("");
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!Array.isArray(parsed.items)) throw new Error("bad format");
+        const label = parsed.exportedAt ? parsed.exportedAt.slice(0, 10) : "plik";
+        setConfirmRestoreBackup({
+          id: `plik z ${label}`,
+          items: parsed.items,
+          freeDays: Array.isArray(parsed.freeDays) ? parsed.freeDays : [],
+          clients: Array.isArray(parsed.clients) ? parsed.clients : [],
+          isFile: true,
+        });
+      } catch (err) {
+        setImportError("Nie udało się odczytać tego pliku — sprawdź, czy to poprawna kopia zapasowa z tej aplikacji.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
 
   const isYearSearch = search.trim() !== "" && searchScope === "year";
 
@@ -941,6 +986,7 @@ function App() {
           loading={backupsLoading}
           hasFirebase={!!window.firebaseDb}
           onExport={exportBackupFile}
+          onImportFile={handleImportFile}
           onRestore={(b) => setConfirmRestoreBackup(b)}
           onClose={() => setShowBackupsPanel(false)}
         />
@@ -949,7 +995,11 @@ function App() {
       {confirmRestoreBackup && (
         <ConfirmModal
           title="Przywrócić tę kopię zapasową?"
-          message={`Obecne dane zostaną zastąpione stanem z kopii z dnia ${confirmRestoreBackup.id.split("-").reverse().join(".")}. Wszystko, co dodałaś/eś od tego dnia, zostanie utracone. Tej operacji nie da się cofnąć.`}
+          message={
+            confirmRestoreBackup.fromFile
+              ? `Obecne dane zostaną zastąpione zawartością pliku „${confirmRestoreBackup.fileName}” (${(confirmRestoreBackup.items || []).length} wpisów). Tej operacji nie da się cofnąć.`
+              : `Obecne dane zostaną zastąpione stanem z kopii z dnia ${confirmRestoreBackup.id.split("-").reverse().join(".")}. Wszystko, co dodałaś/eś od tego dnia, zostanie utracone. Tej operacji nie da się cofnąć.`
+          }
           confirmLabel="Przywróć"
           onConfirm={() => restoreBackup(confirmRestoreBackup)}
           onCancel={() => setConfirmRestoreBackup(null)}
@@ -2305,7 +2355,7 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
   );
 }
 
-function BackupsPanel({ backups, loading, hasFirebase, onExport, onRestore, onClose }) {
+function BackupsPanel({ backups, loading, hasFirebase, onExport, onImportFile, onRestore, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
       <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
@@ -2328,6 +2378,28 @@ function BackupsPanel({ backups, loading, hasFirebase, onExport, onRestore, onCl
             >
               Pobierz kopię teraz (plik)
             </button>
+          </div>
+
+          <div>
+            <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
+              Masz wcześniej pobrany plik kopii zapasowej? Wybierz go, żeby przywrócić z niego dane.
+            </p>
+            <label
+              className="w-full flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold border cursor-pointer"
+              style={{ borderColor: PRIMARY, color: PRIMARY }}
+            >
+              Wgraj kopię z pliku
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files && e.target.files[0];
+                  if (file) onImportFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
           </div>
 
           <div className="h-px" style={{ background: LINE_COLOR }} />
