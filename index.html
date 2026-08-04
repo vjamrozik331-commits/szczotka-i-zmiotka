@@ -632,6 +632,13 @@ function App() {
     return { overdue, upcoming, zarobkiPlanowane, liczba: planned.length, next7count: next7.length };
   }, [entries]);
 
+  const completedData = useMemo(() => {
+    const all = (entries || []).filter((e) => e.klient && e.klient.trim() && isRealized(e) && e.data && e.data.startsWith(String(year)));
+    const done = all.slice().sort(compareEntries);
+    const zarobki = done.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+    return { done, zarobki, liczba: done.length };
+  }, [entries, year]);
+
   const calendarCells = useMemo(() => {
     const first = new Date(year, activeTab, 1);
     const daysInMonth = new Date(year, activeTab + 1, 0).getDate();
@@ -941,10 +948,12 @@ function App() {
         view={view}
         upcomingCount={upcomingData.upcoming.length + upcomingData.overdue.length}
         overdueCount={upcomingData.overdue.length}
+        completedCount={completedData.liczba}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
         onAddFreeDay={() => openFreeDayForm()}
         onGoUpcoming={() => setView("upcoming")}
+        onGoCompleted={() => setView("wykonane")}
         onGoOverdue={() => setView("overdue")}
         onGoSummary={() => setView("summary")}
         onGoClients={() => setView("clients")}
@@ -998,6 +1007,20 @@ function App() {
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
             onMove={openMove}
+            onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
+          />
+        )}
+        {view === "wykonane" && (
+          <CompletedView
+            data={completedData}
+            entries={entries}
+            year={year}
+            onEdit={openEditForm}
+            onDelete={deleteEntry}
+            onSetStatus={setEntryStatus}
+            onMarkDone={openMarkDone}
+            onMove={openMove}
+            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
         )}
@@ -1252,7 +1275,7 @@ function TabBar({ activeTab, view, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, overdueCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoOverdue, onGoSummary, onGoClients }) {
+function ActionBar({ view, upcomingCount, overdueCount, completedCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoOverdue, onGoSummary, onGoClients }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
       <div className="flex gap-2 flex-wrap">
@@ -1300,6 +1323,21 @@ function ActionBar({ view, upcomingCount, overdueCount, onAddClient, onAddPurcha
             </span>
           )}
         </button>
+        {completedCount > 0 && (
+          <button
+            onClick={onGoCompleted}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+            style={{ background: view === "wykonane" ? PRIMARY_DARK : MINT, color: view === "wykonane" ? "white" : PRIMARY_DARK }}
+          >
+            <CheckCircle2 size={14} /> Wykonane
+            <span
+              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
+              style={{ background: view === "wykonane" ? "rgba(255,255,255,0.25)" : PRIMARY_DARK, color: "white" }}
+            >
+              {completedCount}
+            </span>
+          </button>
+        )}
         {overdueCount > 0 && (
           <button
             onClick={onGoOverdue}
@@ -1666,6 +1704,82 @@ function OverdueView({ overdue, onEdit, onDelete, onSetStatus, onMarkDone, onMov
   );
 }
 
+function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
+  const { done, zarobki, liczba } = data;
+  const [dayDetail, setDayDetail] = useState(null); // dateStr | null
+
+  const monthGroups = useMemo(() => {
+    const groups = {};
+    done.forEach((e) => {
+      if (!e.data) return;
+      const key = e.data.slice(0, 7); // "YYYY-MM"
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    });
+    return Object.keys(groups).sort().map((key) => {
+      const [y, m] = key.split("-").map(Number);
+      return { year: y, month: m - 1, entries: groups[key] };
+    });
+  }, [done]);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
+        <CheckCircle2 size={22} /> Wykonane zlecenia <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
+      </h2>
+
+      <div className="flex gap-3 flex-wrap">
+        <KpiCard icon={CheckCircle2} label="Wykonane" value={liczba} accent={PRIMARY_DARK} />
+        <KpiCard icon={Wallet} label="Przychód" value={fmtPLN(zarobki)} accent={PRIMARY_DARK} />
+      </div>
+
+      {liczba === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          Brak jeszcze wykonanych zleceń w {year} roku.
+        </div>
+      ) : (
+        <>
+          {monthGroups.length > 0 && (
+            <div className="flex gap-4 flex-wrap">
+              {monthGroups.map((g) => (
+                <MiniMonthCalendar
+                  key={`${g.year}-${g.month}`}
+                  year={g.year}
+                  month={g.month}
+                  entries={g.entries}
+                  tone="done"
+                  onDayClick={(dateStr) => setDayDetail(dateStr)}
+                />
+              ))}
+            </div>
+          )}
+
+          <div>
+            <h3 className="text-sm font-semibold mb-2" style={{ color: PRIMARY_DARK }}>
+              Lista wykonanych ({liczba})
+            </h3>
+            <UpcomingList entries={done} done onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+          </div>
+        </>
+      )}
+
+      {dayDetail && (
+        <DayDetailModal
+          dateStr={dayDetail}
+          entries={(entries || []).filter((e) => e.data === dayDetail)}
+          onEdit={(e) => { onEdit(e); setDayDetail(null); }}
+          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
+          onMove={(e) => { onMove(e); setDayDetail(null); }}
+          onClose={() => setDayDetail(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const { overdue, upcoming, zarobkiPlanowane, liczba, next7count } = data;
   const isEmpty = overdue.length === 0 && upcoming.length === 0;
@@ -1753,7 +1867,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone
   );
 }
 
-function MiniMonthCalendar({ year, month, entries, onDayClick }) {
+function MiniMonthCalendar({ year, month, entries, onDayClick, tone = "planned" }) {
   const cells = useMemo(() => {
     const first = new Date(year, month, 1);
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1787,8 +1901,9 @@ function MiniMonthCalendar({ year, month, entries, onDayClick }) {
         {cells.map((cell, idx) => {
           if (!cell) return <div key={idx} />;
           const hasEntries = cell.entries.length > 0;
-          const isOverdue = hasEntries && cell.dateStr < todayStr();
+          const isOverdue = tone === "planned" && hasEntries && cell.dateStr < todayStr();
           const isToday = cell.dateStr === todayStr();
+          const doneStyle = tone === "done" && hasEntries;
           return (
             <button
               key={idx}
@@ -1796,14 +1911,14 @@ function MiniMonthCalendar({ year, month, entries, onDayClick }) {
               disabled={!hasEntries}
               className="aspect-square rounded-md flex items-center justify-center text-[11px] transition"
               style={{
-                background: isOverdue ? "#FDECEA" : hasEntries ? "#EAF1F8" : "transparent",
-                border: isOverdue ? "1px dashed #E0665A" : hasEntries ? "1px dashed #2A5C8A" : isToday ? "1px solid #2A5C8A" : "1px solid transparent",
-                color: isOverdue ? CORAL : hasEntries ? "#2A5C8A" : isToday ? "#2A5C8A" : "#B0B8B5",
+                background: isOverdue ? "#FDECEA" : doneStyle ? "rgba(31,110,92,0.12)" : hasEntries ? "#EAF1F8" : "transparent",
+                border: isOverdue ? "1px dashed #E0665A" : doneStyle ? "1px solid rgba(31,110,92,0.4)" : hasEntries ? "1px dashed #2A5C8A" : isToday ? "1px solid #2A5C8A" : "1px solid transparent",
+                color: isOverdue ? CORAL : doneStyle ? PRIMARY_DARK : hasEntries ? "#2A5C8A" : isToday ? "#2A5C8A" : "#B0B8B5",
                 fontFamily: MONO_FONT,
                 fontWeight: hasEntries || isToday ? 600 : 400,
                 cursor: hasEntries ? "pointer" : "default",
               }}
-              title={hasEntries ? `${cell.entries.length} zaplanowane` : ""}
+              title={hasEntries ? `${cell.entries.length} ${tone === "done" ? "wykonane" : "zaplanowane"}` : ""}
             >
               {cell.day}
             </button>
@@ -1814,7 +1929,7 @@ function MiniMonthCalendar({ year, month, entries, onDayClick }) {
   );
 }
 
-function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onJumpToMonth }) {
+function UpcomingList({ entries, overdue, done, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onJumpToMonth }) {
   return (
     <div className="rounded-xl overflow-hidden divide-y" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
       {entries.map((e) => {
@@ -1822,7 +1937,7 @@ function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMarkD
         return (
           <div key={e.id} className="flex items-center gap-3 px-4 py-3 flex-wrap" style={{ borderColor: LINE_COLOR }}>
             <div className="w-20 flex-shrink-0">
-              <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: overdue ? CORAL : PRIMARY_DARK }}>
+              <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: overdue ? CORAL : done ? PRIMARY_DARK : PRIMARY_DARK }}>
                 {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
               </div>
               <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
@@ -1836,9 +1951,9 @@ function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMarkD
             <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK, minWidth: 90 }}>
               {e.zarobki ? fmtPLN(e.zarobki) : "—"}
             </div>
-            <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 ${overdue ? "bg-red-50 text-red-700 border-red-200" : ORDER_STATUS_STYLES["Zaplanowane"]}`}>
-              {overdue ? <AlertTriangle size={11} /> : <OrderStatusIcon status="Zaplanowane" />}
-              {overdue ? "Zaległe" : "Zaplanowane"}
+            <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 ${overdue ? "bg-red-50 text-red-700 border-red-200" : done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ORDER_STATUS_STYLES["Zaplanowane"]}`}>
+              {overdue ? <AlertTriangle size={11} /> : done ? <CheckCircle2 size={11} /> : <OrderStatusIcon status="Zaplanowane" />}
+              {overdue ? "Zaległe" : done ? "Wykonane" : "Zaplanowane"}
             </span>
             {entryMonth !== null && (
               <button
@@ -1850,12 +1965,16 @@ function UpcomingList({ entries, overdue, onEdit, onDelete, onSetStatus, onMarkD
               </button>
             )}
             <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-              <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
-                <CheckCircle2 size={15} color={PRIMARY} />
-              </button>
-              <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
-                <Ban size={15} color="#8CA098" />
-              </button>
+              {!done && (
+                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                  <CheckCircle2 size={15} color={PRIMARY} />
+                </button>
+              )}
+              {!done && (
+                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                  <Ban size={15} color="#8CA098" />
+                </button>
+              )}
               <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
                 <Move size={14} color="#2A5C8A" />
               </button>
@@ -2388,6 +2507,7 @@ const ORDER_STATUS_BADGE = {
   "Zaplanowane": { bg: "#EAF1F8", color: "#2A5C8A", Icon: CalendarClock },
   "Wykonane": { bg: "#E4F3EC", color: PRIMARY_DARK, Icon: CheckCircle2 },
   "Odwołane": { bg: "#F1F1EF", color: "#8CA098", Icon: Ban },
+  "Zaległe": { bg: "#FCE9E7", color: CORAL, Icon: AlertTriangle },
 };
 
 function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetStatus, onMarkDone, onMove, onClose }) {
@@ -2413,7 +2533,9 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
                 const isZakup = !e.klient && e.opisWydatkow;
                 const isCancelled = e.statusZlecenia === "Odwołane";
                 const isPlanned = e.statusZlecenia === "Zaplanowane";
-                const badge = !isZakup ? ORDER_STATUS_BADGE[e.statusZlecenia] || ORDER_STATUS_BADGE["Wykonane"] : null;
+                const isOverdue = isPlanned && e.data && e.data < todayStr();
+                const statusLabel = isOverdue ? "Zaległe" : e.statusZlecenia;
+                const badge = !isZakup ? ORDER_STATUS_BADGE[statusLabel] || ORDER_STATUS_BADGE["Wykonane"] : null;
                 return (
                   <div key={e.id} className="flex items-center gap-3 px-5 py-3 flex-wrap">
                     <div style={{ fontFamily: MONO_FONT, fontSize: "0.8rem", color: "#8CA098", minWidth: 44 }}>
@@ -2425,7 +2547,7 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
                     </button>
                     {badge && (
                       <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: badge.bg, color: badge.color }}>
-                        <badge.Icon size={9} /> {e.statusZlecenia}
+                        <badge.Icon size={9} /> {statusLabel}
                       </span>
                     )}
                     <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isZakup ? CORAL : PRIMARY_DARK, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
