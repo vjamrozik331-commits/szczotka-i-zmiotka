@@ -516,10 +516,14 @@ function App() {
     const liczbaZlecen = done.filter((e) => e.klient && e.klient.trim()).length;
     const planned = all.filter((e) => e.statusZlecenia === "Zaplanowane");
     const zaplanowaneZarobki = planned.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+    const today = todayStr();
+    const overduePlanned = planned.filter((e) => e.data < today);
+    const zaległeZarobki = overduePlanned.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
     return {
       godziny, zarobki, wydatki, zysk: zarobki - wydatki, liczbaZlecen,
       stawka: godziny > 0 ? zarobki / godziny : 0,
       zaplanowaneLiczba: planned.length, zaplanowaneZarobki,
+      zaległeLiczba: overduePlanned.length, zaległeZarobki,
     };
   }, [entries, activeTab, year]);
 
@@ -528,7 +532,9 @@ function App() {
     const zarobki = all.filter((e) => isRealized(e) && Number(e.zarobki) > 0).sort(compareEntries);
     const wydatki = all.filter((e) => Number(e.wydatki) > 0).sort(compareEntries);
     const zaplanowane = all.filter((e) => e.statusZlecenia === "Zaplanowane").sort(compareEntries);
-    return { zarobki, wydatki, zaplanowane };
+    const today = todayStr();
+    const zalegle = all.filter((e) => e.statusZlecenia === "Zaplanowane" && e.data < today).sort(compareEntries);
+    return { zarobki, wydatki, zaplanowane, zalegle };
   }, [entries, activeTab, year]);
 
   const knownClients = useMemo(() => {
@@ -910,10 +916,12 @@ function App() {
       <ActionBar
         view={view}
         upcomingCount={upcomingData.upcoming.length + upcomingData.overdue.length}
+        overdueCount={upcomingData.overdue.length}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
         onAddFreeDay={() => openFreeDayForm()}
         onGoUpcoming={() => setView("upcoming")}
+        onGoOverdue={() => setView("overdue")}
         onGoSummary={() => setView("summary")}
         onGoClients={() => setView("clients")}
       />
@@ -947,6 +955,18 @@ function App() {
         {view === "upcoming" && (
           <UpcomingView
             data={upcomingData}
+            entries={entries}
+            onEdit={openEditForm}
+            onDelete={deleteEntry}
+            onSetStatus={setEntryStatus}
+            onMove={openMove}
+            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
+            onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
+          />
+        )}
+        {view === "overdue" && (
+          <OverdueView
+            overdue={upcomingData.overdue}
             onEdit={openEditForm}
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
@@ -1195,7 +1215,7 @@ function TabBar({ activeTab, view, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoSummary, onGoClients }) {
+function ActionBar({ view, upcomingCount, overdueCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoOverdue, onGoSummary, onGoClients }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
       <div className="flex gap-2 flex-wrap">
@@ -1243,6 +1263,21 @@ function ActionBar({ view, upcomingCount, onAddClient, onAddPurchase, onAddFreeD
             </span>
           )}
         </button>
+        {overdueCount > 0 && (
+          <button
+            onClick={onGoOverdue}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+            style={{ background: view === "overdue" ? CORAL : "#FCE9E7", color: view === "overdue" ? "white" : CORAL }}
+          >
+            <AlertTriangle size={14} /> Zaległe
+            <span
+              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
+              style={{ background: view === "overdue" ? "rgba(255,255,255,0.25)" : CORAL, color: "white" }}
+            >
+              {overdueCount}
+            </span>
+          </button>
+        )}
         <button
           onClick={onGoSummary}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
@@ -1282,6 +1317,7 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMove, onRemoveFreeDay, onGoUpcoming }) {
   const [detail, setDetail] = useState(null); // "zarobki" | "wydatki" | "zaplanowane" | "wolne" | null
+  const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
 
   return (
     <div className="space-y-5">
@@ -1298,12 +1334,15 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
         {summary.zaplanowaneLiczba > 0 && (
           <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={() => setDetail("zaplanowane")} />
         )}
+        {summary.zaległeLiczba > 0 && (
+          <KpiCard icon={AlertTriangle} label="Zaległe" value={`${summary.zaległeLiczba} · ${fmtPLN(summary.zaległeZarobki)}`} accent={CORAL} onClick={() => setDetail("zalegle")} />
+        )}
         {freeDays.length > 0 && (
           <KpiCard icon={Umbrella} label="Dni wolne" value={freeDays.length} accent="#8A6A1F" onClick={() => setDetail("wolne")} />
         )}
       </div>
 
-      {!isYearSearch && <CalendarStrip cells={calendarCells} onAddForDay={onAddForDay} />}
+      {!isYearSearch && <CalendarStrip cells={calendarCells} onDayClick={(dateStr, dayEntries) => setDayDetail({ dateStr, entries: dayEntries })} />}
 
       {!isYearSearch && freeDays.length > 0 && (
         <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
@@ -1330,6 +1369,16 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
           freeDays={freeDays}
           onEdit={onEdit}
           onClose={() => setDetail(null)}
+        />
+      )}
+
+      {dayDetail && (
+        <DayDetailModal
+          dateStr={dayDetail.dateStr}
+          entries={dayDetail.entries}
+          onEdit={(e) => { onEdit(e); setDayDetail(null); }}
+          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onClose={() => setDayDetail(null)}
         />
       )}
 
@@ -1371,7 +1420,7 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
   );
 }
 
-function CalendarStrip({ cells, onAddForDay }) {
+function CalendarStrip({ cells, onDayClick }) {
   return (
     <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
       <div className="flex items-center gap-4 mb-3 text-[10px] flex-wrap" style={{ color: "#8CA098" }}>
@@ -1400,7 +1449,7 @@ function CalendarStrip({ cells, onAddForDay }) {
           return (
             <button
               key={idx}
-              onClick={() => onAddForDay(cell.dateStr)}
+              onClick={() => onDayClick(cell.dateStr, cell.entries)}
               className="aspect-square rounded-lg flex flex-col items-center justify-center relative text-xs transition hover:ring-2"
               style={{
                 background: doneEntries.length
@@ -1551,9 +1600,35 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
 /* ------------------------------------------------------------------ */
 /* Upcoming View — planowanie i nadzór przyszłych zleceń                */
 /* ------------------------------------------------------------------ */
-function UpcomingView({ data, onEdit, onDelete, onSetStatus, onMove, onJumpToMonth }) {
+function OverdueView({ overdue, onEdit, onDelete, onSetStatus, onMove, onJumpToMonth }) {
+  const totalValue = overdue.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: CORAL }}>
+        <AlertTriangle size={22} /> Zaległe zlecenia
+      </h2>
+
+      <div className="flex gap-3 flex-wrap">
+        <KpiCard icon={AlertTriangle} label="Zaległe" value={overdue.length} accent={CORAL} />
+        <KpiCard icon={Wallet} label="Wartość zaległych" value={fmtPLN(totalValue)} accent={CORAL} />
+      </div>
+
+      {overdue.length === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          Brak zaległych zleceń — wszystko na bieżąco. 🎉
+        </div>
+      ) : (
+        <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+      )}
+    </div>
+  );
+}
+
+function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMove, onAddForDay, onJumpToMonth }) {
   const { overdue, upcoming, zarobkiPlanowane, liczba, next7count } = data;
   const isEmpty = overdue.length === 0 && upcoming.length === 0;
+  const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
 
   const monthGroups = useMemo(() => {
     const groups = {};
@@ -1591,7 +1666,13 @@ function UpcomingView({ data, onEdit, onDelete, onSetStatus, onMove, onJumpToMon
       {monthGroups.length > 0 && (
         <div className="flex gap-4 flex-wrap">
           {monthGroups.map((g) => (
-            <MiniMonthCalendar key={`${g.year}-${g.month}`} year={g.year} month={g.month} entries={g.entries} onDayClick={() => onJumpToMonth(g.month)} />
+            <MiniMonthCalendar
+              key={`${g.year}-${g.month}`}
+              year={g.year}
+              month={g.month}
+              entries={g.entries}
+              onDayClick={(dateStr) => setDayDetail({ dateStr, entries: (entries || []).filter((e) => e.data === dateStr) })}
+            />
           ))}
         </div>
       )}
@@ -1612,6 +1693,16 @@ function UpcomingView({ data, onEdit, onDelete, onSetStatus, onMove, onJumpToMon
           </h3>
           <UpcomingList entries={upcoming} onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMove={onMove} onJumpToMonth={onJumpToMonth} />
         </div>
+      )}
+
+      {dayDetail && (
+        <DayDetailModal
+          dateStr={dayDetail.dateStr}
+          entries={dayDetail.entries}
+          onEdit={(e) => { onEdit(e); setDayDetail(null); }}
+          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onClose={() => setDayDetail(null)}
+        />
       )}
     </div>
   );
@@ -2244,8 +2335,82 @@ const DETAIL_CONFIG = {
   zarobki: { title: "Zarobki (wykonane)", icon: Wallet, color: PRIMARY_DARK, empty: "Brak zarobków w tym miesiącu." },
   wydatki: { title: "Wydatki", icon: Receipt, color: CORAL, empty: "Brak wydatków w tym miesiącu." },
   zaplanowane: { title: "Zaplanowane zlecenia", icon: CalendarClock, color: "#2A5C8A", empty: "Brak zaplanowanych zleceń w tym miesiącu." },
+  zalegle: { title: "Zaległe zlecenia", icon: AlertTriangle, color: CORAL, empty: "Brak zaległych zleceń w tym miesiącu." },
   wolne: { title: "Dni wolne", icon: Umbrella, color: "#8A6A1F", empty: "Brak dni wolnych w tym miesiącu." },
 };
+
+const ORDER_STATUS_BADGE = {
+  "Zaplanowane": { bg: "#EAF1F8", color: "#2A5C8A", Icon: CalendarClock },
+  "Wykonane": { bg: "#E4F3EC", color: PRIMARY_DARK, Icon: CheckCircle2 },
+  "Odwołane": { bg: "#F1F1EF", color: "#8CA098", Icon: Ban },
+};
+
+function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onClose }) {
+  const sorted = entries.slice().sort(compareEntries);
+  const dateLabel = dateStr ? `${dateStr.slice(8, 10)}.${dateStr.slice(5, 7)}.${dateStr.slice(0, 4)}` : "";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <h3 className="flex items-center gap-2 capitalize" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
+            {dateStr && weekdayName(dateStr)}, {dateLabel}
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {sorted.length === 0 ? (
+            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak wpisów tego dnia.</div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+              {sorted.map((e) => {
+                const isZakup = !e.klient && e.opisWydatkow;
+                const badge = !isZakup ? ORDER_STATUS_BADGE[e.statusZlecenia] || ORDER_STATUS_BADGE["Wykonane"] : null;
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => onEdit(e)}
+                    className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition"
+                  >
+                    <div style={{ fontFamily: MONO_FONT, fontSize: "0.8rem", color: "#8CA098", minWidth: 44 }}>
+                      {e.godzinaStart || "—"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
+                      {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
+                    </div>
+                    {badge && (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: badge.bg, color: badge.color }}>
+                        <badge.Icon size={9} /> {e.statusZlecenia}
+                      </span>
+                    )}
+                    <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isZakup ? CORAL : PRIMARY_DARK, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
+                      {fmtPLN(Number(isZakup ? e.wydatki : e.zarobki) || 0)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 px-5 py-4 border-t flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
+            Anuluj
+          </button>
+          <button
+            onClick={() => onAddNew(dateStr)}
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
+            style={{ background: PRIMARY }}
+          >
+            Zaplanuj zlecenie
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function KpiDetailModal({ type, entries, freeDays, onEdit, onClose }) {
   const cfg = DETAIL_CONFIG[type];
@@ -2289,24 +2454,34 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onClose }) {
             </div>
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-              {items.map((e) => (
-                <button
-                  key={e.id}
-                  onClick={() => { onEdit(e); onClose(); }}
-                  className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition"
-                >
-                  <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: cfg.color, minWidth: 56 }}>
-                    {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
-                    {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
-                  </div>
-                  <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: cfg.color, flexShrink: 0 }}>
-                    {fmtPLN(Number(e[amountKey]) || 0)}
-                  </div>
-                </button>
-              ))}
+              {items.map((e) => {
+                const isOverdue = type === "zaplanowane" && e.data < todayStr();
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => { onEdit(e); onClose(); }}
+                    className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition"
+                  >
+                    <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isOverdue ? CORAL : cfg.color, minWidth: 56 }}>
+                      {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
+                        {isOverdue && (
+                          <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
+                            <AlertTriangle size={9} /> Zaległe
+                          </span>
+                        )}
+                      </div>
+                      {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
+                    </div>
+                    <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isOverdue ? CORAL : cfg.color, flexShrink: 0 }}>
+                      {fmtPLN(Number(e[amountKey]) || 0)}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
