@@ -161,6 +161,7 @@ const ORDER_STATUS_STYLES = {
   "Zaplanowane": "bg-sky-50 text-sky-700 border-sky-200",
   "Wykonane": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "Odwołane": "bg-gray-100 text-gray-500 border-gray-200",
+  "Zaległe": "bg-red-50 text-red-700 border-red-200",
 };
 function OrderStatusIcon({ status, size = 11 }) {
   if (status === "Zaplanowane") return <CalendarClock size={size} />;
@@ -272,7 +273,7 @@ function deriveClientsFromEntries(entries) {
 const emptyForm = {
   data: "", godzinaStart: "", klient: "", adres: "", opisUslugi: "usługi sprzątające", godziny: "",
   zarobki: "", wydatki: "", opisWydatkow: "", kategoria: "", typKlienta: "", status: "", uwagi: "",
-  statusZlecenia: "", saveClientToList: true,
+  statusZlecenia: "", saveClientToList: true, fakturaVat: false,
 };
 
 function App() {
@@ -296,7 +297,7 @@ function App() {
   const [freeDayConflict, setFreeDayConflict] = useState(null);
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClientId, setEditingClientId] = useState(null);
-  const [clientForm, setClientForm] = useState({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "" });
+  const [clientForm, setClientForm] = useState({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "", fakturaVat: false });
   const [clientSearch, setClientSearch] = useState("");
   const [showBackupsPanel, setShowBackupsPanel] = useState(false);
   const [confirmDoneEntry, setConfirmDoneEntry] = useState(null);
@@ -681,6 +682,7 @@ function App() {
     setForm({
       ...emptyForm, data: d, statusZlecenia: defaultOrderStatus(d),
       klient: client.name, adres: client.adres || "", typKlienta: client.typKlienta || "",
+      fakturaVat: !!client.fakturaVat,
     });
     setShowForm(true);
   }, []);
@@ -700,6 +702,7 @@ function App() {
       wydatki: entry.wydatki ?? "", opisWydatkow: entry.opisWydatkow || "", kategoria: entry.kategoria || "",
       typKlienta: entry.typKlienta || "", status: entry.status || "", uwagi: entry.uwagi || "",
       statusZlecenia: entry.statusZlecenia || defaultOrderStatus(entry.data),
+      fakturaVat: !!entry.fakturaVat,
     });
     setShowForm(true);
   }, []);
@@ -715,6 +718,7 @@ function App() {
         if (known) {
           if (!f.adres) next.adres = known.adres;
           if (known.typKlienta) next.typKlienta = known.typKlienta;
+          next.fakturaVat = !!known.fakturaVat;
         } else if (!f.typKlienta) {
           next.typKlienta = classifyClient(value);
         }
@@ -732,12 +736,14 @@ function App() {
       opisWydatkow: form.opisWydatkow.trim(), kategoria: form.kategoria, typKlienta: form.typKlienta,
       status: form.status, uwagi: form.uwagi.trim(),
       statusZlecenia: form.statusZlecenia || defaultOrderStatus(form.data),
+      fakturaVat: !!form.fakturaVat,
     };
     if (formType === "klient") {
       payload.wydatki = null; payload.opisWydatkow = ""; payload.kategoria = "";
     } else if (formType === "zakup") {
       payload.klient = ""; payload.adres = ""; payload.opisUslugi = ""; payload.godziny = null;
       payload.godzinaStart = ""; payload.zarobki = null; payload.typKlienta = ""; payload.status = ""; payload.statusZlecenia = "Wykonane";
+      payload.fakturaVat = false;
     }
     return payload;
   }
@@ -888,13 +894,13 @@ function App() {
 
   function openAddClientRecord() {
     setEditingClientId(null);
-    setClientForm({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "" });
+    setClientForm({ name: "", adres: "", telefon: "", typKlienta: "", uwagi: "", fakturaVat: false });
     setShowClientForm(true);
   }
 
   function openEditClientRecord(client) {
     setEditingClientId(client.id);
-    setClientForm({ name: client.name || "", adres: client.adres || "", telefon: client.telefon || "", typKlienta: client.typKlienta || "", uwagi: client.uwagi || "" });
+    setClientForm({ name: client.name || "", adres: client.adres || "", telefon: client.telefon || "", typKlienta: client.typKlienta || "", uwagi: client.uwagi || "", fakturaVat: !!client.fakturaVat });
     setShowClientForm(true);
   }
 
@@ -985,7 +991,7 @@ function App() {
             onGoUpcoming={() => setView("upcoming")}
           />
         )}
-        {view === "summary" && <SummaryView yearData={yearData} year={year} onGoUpcoming={() => setView("upcoming")} />}
+        {view === "summary" && <SummaryView yearData={yearData} year={year} entries={entries} onGoUpcoming={() => setView("upcoming")} onEdit={openEditForm} />}
         {view === "upcoming" && (
           <UpcomingView
             data={upcomingData}
@@ -1002,11 +1008,13 @@ function App() {
         {view === "overdue" && (
           <OverdueView
             overdue={upcomingData.overdue}
+            entries={entries}
             onEdit={openEditForm}
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
             onMove={openMove}
+            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
         )}
@@ -1313,7 +1321,7 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, onAddCli
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
           style={{ background: view === "upcoming" ? PRIMARY_DARK : "#EAF1F8", color: view === "upcoming" ? "white" : "#2A5C8A" }}
         >
-          <CalendarClock size={14} /> Nadchodzące
+          <CalendarClock size={14} /> Zaplanowane
           {upcomingCount > 0 && (
             <span
               className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
@@ -1633,7 +1641,7 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
                     ) : "—"}
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${ORDER_STATUS_STYLES[orderStatus] || ""}`}>
+                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${ORDER_STATUS_STYLES[isOverdue ? "Zaległe" : orderStatus] || ""}`}>
                       {isOverdue ? <AlertTriangle size={11} /> : <OrderStatusIcon status={orderStatus} />}
                       {isOverdue ? "Zaległe" : orderStatus}
                     </span>
@@ -1679,8 +1687,23 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
 /* ------------------------------------------------------------------ */
 /* Upcoming View — planowanie i nadzór przyszłych zleceń                */
 /* ------------------------------------------------------------------ */
-function OverdueView({ overdue, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onJumpToMonth }) {
+function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const totalValue = overdue.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
+  const [dayDetail, setDayDetail] = useState(null); // dateStr | null
+
+  const monthGroups = useMemo(() => {
+    const groups = {};
+    overdue.forEach((e) => {
+      if (!e.data) return;
+      const key = e.data.slice(0, 7); // "YYYY-MM"
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    });
+    return Object.keys(groups).sort().map((key) => {
+      const [y, m] = key.split("-").map(Number);
+      return { year: y, month: m - 1, entries: groups[key] };
+    });
+  }, [overdue]);
 
   return (
     <div className="space-y-6">
@@ -1698,7 +1721,36 @@ function OverdueView({ overdue, onEdit, onDelete, onSetStatus, onMarkDone, onMov
           Brak zaległych zleceń — wszystko na bieżąco. 🎉
         </div>
       ) : (
-        <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+        <>
+          {monthGroups.length > 0 && (
+            <div className="flex gap-4 flex-wrap">
+              {monthGroups.map((g) => (
+                <MiniMonthCalendar
+                  key={`${g.year}-${g.month}`}
+                  year={g.year}
+                  month={g.month}
+                  entries={g.entries}
+                  onDayClick={(dateStr) => setDayDetail(dateStr)}
+                />
+              ))}
+            </div>
+          )}
+          <UpcomingList entries={overdue} overdue onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+        </>
+      )}
+
+      {dayDetail && (
+        <DayDetailModal
+          dateStr={dayDetail}
+          entries={(entries || []).filter((e) => e.data === dayDetail)}
+          onEdit={(e) => { onEdit(e); setDayDetail(null); }}
+          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
+          onMove={(e) => { onMove(e); setDayDetail(null); }}
+          onClose={() => setDayDetail(null)}
+        />
       )}
     </div>
   );
@@ -2071,6 +2123,11 @@ function ClientsView({ clients, entries, search, setSearch, onAdd, onEdit, onDel
                   {c.typKlienta && (
                     <span className="px-2 py-0.5 rounded-full" style={{ background: MINT, color: PRIMARY_DARK }}>{c.typKlienta}</span>
                   )}
+                  {c.fakturaVat && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: "#FDF3E0", color: GOLD }}>
+                      <Receipt size={10} /> Faktura VAT
+                    </span>
+                  )}
                 </div>
                 {c.uwagi && <div className="text-xs italic" style={{ color: "#8CA098" }}>{c.uwagi}</div>}
                 {s.liczba > 0 && (
@@ -2115,6 +2172,12 @@ function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
               </select>
             </FormField>
           </div>
+          <FormField label="Faktura VAT">
+            <select className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.fakturaVat ? "tak" : "nie"} onChange={(e) => onChange("fakturaVat", e.target.value === "tak")}>
+              <option value="nie">Nie</option>
+              <option value="tak">Tak</option>
+            </select>
+          </FormField>
           <FormField label="Uwagi">
             <textarea className={inputCls} style={{ borderColor: LINE_COLOR, minHeight: 60 }} value={form.uwagi} onChange={(e) => onChange("uwagi", e.target.value)} placeholder="np. kod do domofonu, ma psa…" />
           </FormField>
@@ -2137,7 +2200,35 @@ function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
   );
 }
 
-function SummaryView({ yearData, year, onGoUpcoming }) {
+function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit }) {
+  const invoicesByMonth = useMemo(() => {
+    const filtered = (entries || []).filter(
+      (e) => e.fakturaVat && e.klient && e.klient.trim() && e.data && e.data.startsWith(String(year)) && e.statusZlecenia !== "Odwołane"
+    );
+    const groups = {};
+    filtered.forEach((e) => {
+      const monthIdx = new Date(e.data + "T00:00:00").getMonth();
+      if (!groups[monthIdx]) groups[monthIdx] = {};
+      if (!groups[monthIdx][e.klient]) groups[monthIdx][e.klient] = { total: 0, count: 0, entries: [] };
+      groups[monthIdx][e.klient].total += Number(e.zarobki) || 0;
+      groups[monthIdx][e.klient].count += 1;
+      groups[monthIdx][e.klient].entries.push(e);
+    });
+    return Object.keys(groups)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((monthIdx) => ({
+        monthIdx,
+        monthName: MONTH_NAMES[monthIdx],
+        clients: Object.entries(groups[monthIdx])
+          .map(([klient, data]) => ({ klient, ...data }))
+          .sort((a, b) => b.total - a.total),
+      }));
+  }, [entries, year]);
+
+  const totalInvoices = invoicesByMonth.reduce((s, m) => s + m.clients.reduce((s2, c) => s2 + c.count, 0), 0);
+  const [expanded, setExpanded] = useState(null); // "monthIdx-klient" | null
+
   return (
     <div className="space-y-6">
       <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
@@ -2218,6 +2309,62 @@ function SummaryView({ yearData, year, onGoUpcoming }) {
           )}
         </ChartCard>
       </div>
+
+      {invoicesByMonth.length > 0 && (
+        <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+          <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: LINE_COLOR }}>
+            <Receipt size={16} color={GOLD} />
+            <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
+              Faktury VAT do wystawienia <span style={{ color: "#8CA098", fontWeight: 400 }}>({totalInvoices} {totalInvoices === 1 ? "zlecenie" : "zleceń"})</span>
+            </h3>
+          </div>
+          <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+            {invoicesByMonth.map((m) => (
+              <div key={m.monthIdx}>
+                <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ background: "#FAFBFA", color: "#5B6E67" }}>
+                  {m.monthName}
+                </div>
+                {m.clients.map((c) => {
+                  const key = `${m.monthIdx}-${c.klient}`;
+                  const isExpanded = expanded === key;
+                  return (
+                    <div key={key}>
+                      <button
+                        onClick={() => setExpanded(isExpanded ? null : key)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
+                      >
+                        <div className="flex-1 text-sm font-medium">{c.klient}</div>
+                        <div className="text-xs" style={{ color: "#8CA098" }}>
+                          {c.count} {c.count === 1 ? "zlecenie" : "zleceń"}
+                        </div>
+                        <div style={{ fontFamily: MONO_FONT, fontWeight: 700, color: GOLD, minWidth: 90, textAlign: "right" }}>
+                          {fmtPLN(c.total)}
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="pl-4 pb-2">
+                          {c.entries.sort(compareEntries).map((e) => (
+                            <button
+                              key={e.id}
+                              onClick={() => onEdit && onEdit(e)}
+                              className="w-full flex items-center gap-3 px-4 py-1.5 text-left hover:bg-gray-50 transition text-xs rounded-lg"
+                              style={{ color: "#5B6E67" }}
+                            >
+                              <span style={{ fontFamily: MONO_FONT, minWidth: 44 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
+                              <span className="flex-1">{e.opisUslugi || "—"}</span>
+                              <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <MonthlyTable months={yearData.months} totals={yearData} />
     </div>
@@ -2429,6 +2576,17 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
                   {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </FormField>
+
+              <label className="flex items-center gap-2 text-sm" style={{ color: "#5B6E67" }}>
+                <input
+                  type="checkbox"
+                  checked={form.fakturaVat}
+                  onChange={(e) => onChange("fakturaVat", e.target.checked)}
+                  className="w-4 h-4 rounded"
+                  style={{ accentColor: PRIMARY }}
+                />
+                Potrzebna Faktura VAT
+              </label>
 
               {formType === "full" && (
                 <FormField label="Uwagi (zlecenie)">
