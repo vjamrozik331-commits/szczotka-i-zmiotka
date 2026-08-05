@@ -1836,6 +1836,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone
   const { overdue, upcoming, zarobkiPlanowane, liczba, next7count } = data;
   const isEmpty = overdue.length === 0 && upcoming.length === 0;
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
+  const [detail, setDetail] = useState(null); // "zaplanowane" | "zalegle" | null
 
   const monthGroups = useMemo(() => {
     const groups = {};
@@ -1858,10 +1859,10 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone
       </h2>
 
       <div className="flex gap-3 flex-wrap">
-        <KpiCard icon={CalendarClock} label="Zaplanowane" value={liczba} accent="#2A5C8A" />
+        <KpiCard icon={CalendarClock} label="Zaplanowane" value={liczba} accent="#2A5C8A" onClick={() => setDetail("zaplanowane")} />
         <KpiCard icon={Wallet} label="Spodziewany przychód" value={fmtPLN(zarobkiPlanowane)} accent="#2A5C8A" />
         <KpiCard icon={Clock} label="W ciągu 7 dni" value={next7count} />
-        {overdue.length > 0 && <KpiCard icon={AlertTriangle} label="Zaległe" value={overdue.length} accent={CORAL} />}
+        {overdue.length > 0 && <KpiCard icon={AlertTriangle} label="Zaległe" value={overdue.length} accent={CORAL} onClick={() => setDetail("zalegle")} />}
       </div>
 
       {isEmpty && (
@@ -1913,6 +1914,16 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone
           onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
           onMove={(e) => { onMove(e); setDayDetail(null); }}
           onClose={() => setDayDetail(null)}
+        />
+      )}
+
+      {detail && (
+        <KpiDetailModal
+          type={detail}
+          entries={detail === "zalegle" ? overdue : upcoming}
+          freeDays={[]}
+          onEdit={(e) => { onEdit(e); setDetail(null); }}
+          onClose={() => setDetail(null)}
         />
       )}
     </div>
