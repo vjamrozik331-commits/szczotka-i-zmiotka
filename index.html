@@ -2055,36 +2055,38 @@ function UpcomingList({ entries, overdue, done, onEdit, onDelete, onSetStatus, o
       {entries.map((e) => {
         const entryMonth = e.data ? new Date(e.data + "T00:00:00").getMonth() : null;
         return (
-          <div key={e.id} className="flex items-center gap-3 px-4 py-3 flex-wrap" style={{ borderColor: LINE_COLOR }}>
-            <div className="w-20 flex-shrink-0">
-              <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: overdue ? CORAL : done ? PRIMARY_DARK : PRIMARY_DARK }}>
-                {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
+          <div key={e.id} className="px-4 py-3" style={{ borderColor: LINE_COLOR }}>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="w-20 flex-shrink-0">
+                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: overdue ? CORAL : done ? PRIMARY_DARK : PRIMARY_DARK }}>
+                  {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
+                </div>
+                <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
+                  {e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
+                </div>
               </div>
-              <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
-                {e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
+              <div className="flex-1 min-w-[160px]">
+                <div className="text-sm font-medium">{e.klient || <span style={{ color: "#C7D6CF" }}>Bez klienta</span>}</div>
+                <div className="text-xs" style={{ color: "#5B6E67" }}>{e.adres || e.opisUslugi || "—"}</div>
               </div>
+              <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK, minWidth: 90 }}>
+                {e.zarobki ? fmtPLN(e.zarobki) : "—"}
+              </div>
+              <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 ${overdue ? "bg-red-50 text-red-700 border-red-200" : done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ORDER_STATUS_STYLES["Zaplanowane"]}`}>
+                {overdue ? <AlertTriangle size={11} /> : done ? <CheckCircle2 size={11} /> : <OrderStatusIcon status="Zaplanowane" />}
+                {overdue ? "Zaległe" : done ? "Wykonane" : "Zaplanowane"}
+              </span>
+              {entryMonth !== null && (
+                <button
+                  onClick={() => onJumpToMonth(entryMonth)}
+                  className="text-[11px] px-2 py-0.5 rounded-full font-medium transition hover:opacity-80 flex-shrink-0"
+                  style={{ background: MINT, color: PRIMARY_DARK }}
+                >
+                  {MONTH_NAMES[entryMonth]}
+                </button>
+              )}
             </div>
-            <div className="flex-1 min-w-[160px]">
-              <div className="text-sm font-medium">{e.klient || <span style={{ color: "#C7D6CF" }}>Bez klienta</span>}</div>
-              <div className="text-xs" style={{ color: "#5B6E67" }}>{e.adres || e.opisUslugi || "—"}</div>
-            </div>
-            <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK, minWidth: 90 }}>
-              {e.zarobki ? fmtPLN(e.zarobki) : "—"}
-            </div>
-            <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 ${overdue ? "bg-red-50 text-red-700 border-red-200" : done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ORDER_STATUS_STYLES["Zaplanowane"]}`}>
-              {overdue ? <AlertTriangle size={11} /> : done ? <CheckCircle2 size={11} /> : <OrderStatusIcon status="Zaplanowane" />}
-              {overdue ? "Zaległe" : done ? "Wykonane" : "Zaplanowane"}
-            </span>
-            {entryMonth !== null && (
-              <button
-                onClick={() => onJumpToMonth(entryMonth)}
-                className="text-[11px] px-2 py-0.5 rounded-full font-medium transition hover:opacity-80 flex-shrink-0"
-                style={{ background: MINT, color: PRIMARY_DARK }}
-              >
-                {MONTH_NAMES[entryMonth]}
-              </button>
-            )}
-            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+            <div className="flex items-center gap-1 mt-2">
               {!done && (
                 <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
                   <CheckCircle2 size={15} color={PRIMARY} />
@@ -2874,25 +2876,27 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                 const isCancelled = e.statusZlecenia === "Odwołane";
                 const isPlanned = e.statusZlecenia === "Zaplanowane";
                 return (
-                  <div key={e.id} className="flex items-center gap-3 px-5 py-3 flex-wrap">
-                    <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isOverdue ? CORAL : cfg.color, minWidth: 56 }}>
-                      {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
-                    </div>
-                    <button onClick={() => { onEdit(e); onClose(); }} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
-                      <div className="flex items-center gap-1.5">
-                        <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
-                        {isOverdue && (
-                          <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
-                            <AlertTriangle size={9} /> Zaległe
-                          </span>
-                        )}
+                  <div key={e.id} className="px-5 py-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isOverdue ? CORAL : cfg.color, minWidth: 56 }}>
+                        {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
                       </div>
-                      {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
-                    </button>
-                    <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isOverdue ? CORAL : cfg.color, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
-                      {fmtPLN(Number(e[amountKey]) || 0)}
+                      <button onClick={() => { onEdit(e); onClose(); }} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
+                          {isOverdue && (
+                            <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
+                              <AlertTriangle size={9} /> Zaległe
+                            </span>
+                          )}
+                        </div>
+                        {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
+                      </button>
+                      <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isOverdue ? CORAL : cfg.color, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
+                        {fmtPLN(Number(e[amountKey]) || 0)}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 mt-2">
                       {isPlanned && (
                         <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
                           <CheckCircle2 size={15} color={PRIMARY} />
