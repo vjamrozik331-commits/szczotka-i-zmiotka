@@ -633,7 +633,8 @@ function App() {
       const wydatki = all.reduce((s, e) => s + (Number(e.wydatki) || 0), 0);
       const liczbaZlecen = all.filter((e) => e.klient && e.klient.trim()).length;
       const zysk = zarobki - wydatki;
-      return { name, godziny, zarobki, wydatki, zysk, liczbaZlecen, stawka: godziny > 0 ? zarobki / godziny : 0, marza: zarobki > 0 ? zysk / zarobki : 0 };
+      const dniWolne = (freeDays || []).filter((d) => d.date && new Date(d.date + "T00:00:00").getMonth() === idx && new Date(d.date + "T00:00:00").getFullYear() === year).length;
+      return { name, godziny, zarobki, wydatki, zysk, liczbaZlecen, dniWolne, stawka: godziny > 0 ? zarobki / godziny : 0, marza: zarobki > 0 ? zysk / zarobki : 0 };
     });
     let cum = 0;
     const withCum = months.map((m) => { cum += m.zysk; return { ...m, skumulowany: cum }; });
@@ -642,6 +643,7 @@ function App() {
     const totalWydatki = months.reduce((s, m) => s + m.wydatki, 0);
     const totalGodziny = months.reduce((s, m) => s + m.godziny, 0);
     const totalZlecenia = months.reduce((s, m) => s + m.liczbaZlecen, 0);
+    const totalDniWolne = months.reduce((s, m) => s + m.dniWolne, 0);
 
     const inYear = (e) => e.data && new Date(e.data + "T00:00:00").getFullYear() === year;
 
@@ -668,14 +670,14 @@ function App() {
     const zaplanowaneZarobki = plannedAll.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
 
     return {
-      months: withCum, totalZarobki, totalWydatki, totalGodziny, totalZlecenia,
+      months: withCum, totalZarobki, totalWydatki, totalGodziny, totalZlecenia, totalDniWolne,
       totalZysk: totalZarobki - totalWydatki,
       marza: totalZarobki > 0 ? (totalZarobki - totalWydatki) / totalZarobki : 0,
       stawka: totalGodziny > 0 ? totalZarobki / totalGodziny : 0,
       categories, topClients,
       zaplanowaneLiczba: plannedAll.length, zaplanowaneZarobki,
     };
-  }, [entries, year]);
+  }, [entries, year, freeDays]);
 
   const upcomingData = useMemo(() => {
     const all = entries || [];
@@ -2588,7 +2590,7 @@ function MonthlyTable({ months, totals }) {
         <table className="w-full text-sm" style={{ minWidth: 760 }}>
           <thead>
             <tr style={{ background: "#F0F5F2" }}>
-              {["Miesiąc", "Godziny", "Zarobki", "Wydatki", "Zysk netto", "Śr. stawka", "Zlecenia", "Marża"].map((h) => (
+              {["Miesiąc", "Godziny", "Dni wolne", "Zarobki", "Wydatki", "Zysk netto", "Śr. stawka", "Zlecenia", "Marża"].map((h) => (
                 <th key={h} className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#5B6E67" }}>{h}</th>
               ))}
             </tr>
@@ -2598,6 +2600,7 @@ function MonthlyTable({ months, totals }) {
               <tr key={m.name} className="border-t" style={{ borderColor: LINE_COLOR, background: i % 2 ? "#FAFBFA" : "transparent" }}>
                 <td className="px-3 py-2 font-medium">{m.name}</td>
                 <td className="px-3 py-2" style={{ fontFamily: MONO_FONT }}>{m.godziny ? fmtNum(m.godziny, " h") : "—"}</td>
+                <td className="px-3 py-2" style={{ fontFamily: MONO_FONT, color: m.dniWolne ? "#8A6A1F" : "#C7D6CF" }}>{m.dniWolne || "—"}</td>
                 <td className="px-3 py-2" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK }}>{fmtPLN(m.zarobki)}</td>
                 <td className="px-3 py-2" style={{ fontFamily: MONO_FONT, color: CORAL }}>{fmtPLN(m.wydatki)}</td>
                 <td className="px-3 py-2 font-semibold" style={{ fontFamily: MONO_FONT }}>{fmtPLN(m.zysk)}</td>
@@ -2609,6 +2612,7 @@ function MonthlyTable({ months, totals }) {
             <tr className="border-t-2" style={{ borderColor: PRIMARY, background: "#F0F5F2" }}>
               <td className="px-3 py-2.5 font-bold">RAZEM ROK</td>
               <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT }}>{fmtNum(totals.totalGodziny, " h")}</td>
+              <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT, color: "#8A6A1F" }}>{totals.totalDniWolne || "—"}</td>
               <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK }}>{fmtPLN(totals.totalZarobki)}</td>
               <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT, color: CORAL }}>{fmtPLN(totals.totalWydatki)}</td>
               <td className="px-3 py-2.5 font-bold" style={{ fontFamily: MONO_FONT }}>{fmtPLN(totals.totalZysk)}</td>
