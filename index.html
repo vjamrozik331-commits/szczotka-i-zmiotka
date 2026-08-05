@@ -306,6 +306,7 @@ function App() {
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
   const [saveState, setSaveState] = useState("idle");
+  const [undoHistory, setUndoHistory] = useState([]);
 
   // load from Firestore (real-time sync across devices) with localStorage fallback
   useEffect(() => {
@@ -377,7 +378,7 @@ function App() {
   // Firestore listener itself. This is what prevents a device that just loaded a
   // (possibly momentarily stale) snapshot from echoing it back and clobbering a
   // newer write made from another device in the meantime.
-  function syncToFirestore(nextEntries, nextFreeDays, nextClients) {
+  function persistState(nextEntries, nextFreeDays, nextClients) {
     const clientsToSave = nextClients !== undefined ? nextClients : clients;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextEntries));
@@ -402,6 +403,28 @@ function App() {
         }).catch(() => {});
       } catch (e) {}
     }
+  }
+
+  // Cofnij — jedno naciśnięcie cofa jedną zmianę. Przed każdą modyfikacją odkładamy na stos
+  // stan sprzed tej zmiany (maks. 20 kroków wstecz), żeby "Cofnij" mogło do niego wrócić.
+  const MAX_UNDO_HISTORY = 20;
+
+  function syncToFirestore(nextEntries, nextFreeDays, nextClients) {
+    setUndoHistory((h) => {
+      const next = [...h, { entries, freeDays, clients }];
+      return next.length > MAX_UNDO_HISTORY ? next.slice(next.length - MAX_UNDO_HISTORY) : next;
+    });
+    persistState(nextEntries, nextFreeDays, nextClients);
+  }
+
+  function undoLastChange() {
+    if (undoHistory.length === 0) return;
+    const prev = undoHistory[undoHistory.length - 1];
+    setUndoHistory((h) => h.slice(0, -1));
+    setEntries(prev.entries);
+    setFreeDays(prev.freeDays);
+    setClients(prev.clients);
+    persistState(prev.entries, prev.freeDays, prev.clients);
   }
 
   function exportBackupFile() {
@@ -939,6 +962,8 @@ function App() {
       <Header
         saveState={saveState}
         onBackups={() => { setShowBackupsPanel(true); loadBackupsList(); }}
+        onUndo={undoLastChange}
+        undoCount={undoHistory.length}
         year={year}
         onYearChange={setYear}
       />
@@ -1205,7 +1230,7 @@ function FontImport() {
 /* ------------------------------------------------------------------ */
 /* Header + Tabs                                                       */
 /* ------------------------------------------------------------------ */
-function Header({ saveState, onBackups, year, onYearChange }) {
+function Header({ saveState, onBackups, onUndo, undoCount, year, onYearChange }) {
   return (
     <header className="border-b" style={{ borderColor: LINE_COLOR, background: SURFACE }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
@@ -1235,6 +1260,15 @@ function Header({ saveState, onBackups, year, onYearChange }) {
             {saveState === "saving" && "Zapisywanie…"}
             {saveState === "error" && "Błąd zapisu"}
           </span>
+          <button
+            onClick={onUndo}
+            disabled={undoCount === 0}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition hover:bg-gray-50 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}
+            title={undoCount > 0 ? `Cofnij ostatnią zmianę (dostępne: ${undoCount})` : "Brak zmian do cofnięcia"}
+          >
+            <RotateCcw size={13} /> Cofnij
+          </button>
           <button
             onClick={onBackups}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
@@ -1451,6 +1485,10 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
           entries={detailLists[detail] || []}
           freeDays={freeDays}
           onEdit={onEdit}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMarkDone={onMarkDone}
+          onMove={onMove}
           onClose={() => setDetail(null)}
         />
       )}
@@ -1922,7 +1960,11 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone
           type={detail}
           entries={detail === "zalegle" ? overdue : upcoming}
           freeDays={[]}
-          onEdit={(e) => { onEdit(e); setDetail(null); }}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMarkDone={onMarkDone}
+          onMove={onMove}
           onClose={() => setDetail(null)}
         />
       )}
@@ -2769,7 +2811,7 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
   );
 }
 
-function KpiDetailModal({ type, entries, freeDays, onEdit, onClose }) {
+function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onClose }) {
   const cfg = DETAIL_CONFIG[type];
   const Icon = cfg.icon;
   const isFreeDays = type === "wolne";
@@ -2779,7 +2821,7 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
-      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+      <div className="w-full sm:max-w-lg max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
         <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
           <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: cfg.color }}>
             <Icon size={17} /> {cfg.title}
@@ -2812,17 +2854,16 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onClose }) {
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {items.map((e) => {
-                const isOverdue = type === "zaplanowane" && e.data < todayStr();
+                const isOverdue = (type === "zaplanowane" || type === "zalegle") && e.statusZlecenia === "Zaplanowane" && e.data < todayStr();
+                const isZakup = !e.klient && e.opisWydatkow;
+                const isCancelled = e.statusZlecenia === "Odwołane";
+                const isPlanned = e.statusZlecenia === "Zaplanowane";
                 return (
-                  <button
-                    key={e.id}
-                    onClick={() => { onEdit(e); onClose(); }}
-                    className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition"
-                  >
+                  <div key={e.id} className="flex items-center gap-3 px-5 py-3 flex-wrap">
                     <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isOverdue ? CORAL : cfg.color, minWidth: 56 }}>
                       {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <button onClick={() => { onEdit(e); onClose(); }} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
                       <div className="flex items-center gap-1.5">
                         <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
                         {isOverdue && (
@@ -2832,11 +2873,34 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onClose }) {
                         )}
                       </div>
                       {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
-                    </div>
-                    <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isOverdue ? CORAL : cfg.color, flexShrink: 0 }}>
+                    </button>
+                    <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isOverdue ? CORAL : cfg.color, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
                       {fmtPLN(Number(e[amountKey]) || 0)}
                     </div>
-                  </button>
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      {isPlanned && (
+                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                          <CheckCircle2 size={15} color={PRIMARY} />
+                        </button>
+                      )}
+                      {!isZakup && !isCancelled && (
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                          <Ban size={15} color="#8CA098" />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => { onMove(e); onClose(); }} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                          <Move size={14} color="#2A5C8A" />
+                        </button>
+                      )}
+                      <button onClick={() => { onEdit(e); onClose(); }} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
