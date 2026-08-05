@@ -214,6 +214,39 @@ function defaultOrderStatus(dateStr) {
   if (!dateStr) return "Wykonane";
   return dateStr > todayStr() ? "Zaplanowane" : "Wykonane";
 }
+
+// Wspólna logika liczenia faktur VAT do wystawienia — używana zarówno przez zakładkę
+// "Faktury", jak i sekcję w "Podsumowanie", żeby liczby zawsze były ze sobą spójne.
+function computeInvoicesByYear(entries, year) {
+  const filtered = (entries || []).filter(
+    (e) => e.fakturaVat && e.klient && e.klient.trim() && e.data && e.data.startsWith(String(year)) && e.statusZlecenia !== "Odwołane"
+  );
+  const groups = {};
+  filtered.forEach((e) => {
+    const monthIdx = new Date(e.data + "T00:00:00").getMonth();
+    if (!groups[monthIdx]) groups[monthIdx] = {};
+    if (!groups[monthIdx][e.klient]) groups[monthIdx][e.klient] = { total: 0, count: 0, entries: [] };
+    groups[monthIdx][e.klient].total += Number(e.zarobki) || 0;
+    groups[monthIdx][e.klient].count += 1;
+    groups[monthIdx][e.klient].entries.push(e);
+  });
+  const months = Object.keys(groups)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((monthIdx) => ({
+      monthIdx,
+      monthName: MONTH_NAMES[monthIdx],
+      clients: Object.entries(groups[monthIdx])
+        .map(([klient, data]) => ({ klient, ...data }))
+        .sort((a, b) => b.total - a.total),
+    }));
+  return {
+    months,
+    totalCount: filtered.length,
+    totalValue: filtered.reduce((s, e) => s + (Number(e.zarobki) || 0), 0),
+  };
+}
+
 function isRealized(e) {
   return e.statusZlecenia !== "Zaplanowane" && e.statusZlecenia !== "Odwołane";
 }
@@ -292,6 +325,7 @@ function App() {
   const [conflictInfo, setConflictInfo] = useState(null);
   const [moveInfo, setMoveInfo] = useState(null);
   const [moveConflict, setMoveConflict] = useState(null);
+  const [showFreeDaysList, setShowFreeDaysList] = useState(false);
   const [showFreeDayForm, setShowFreeDayForm] = useState(false);
   const [freeDayForm, setFreeDayForm] = useState({ start: "", end: "", opis: "" });
   const [freeDayConflict, setFreeDayConflict] = useState(null);
@@ -663,6 +697,8 @@ function App() {
     return { done, zarobki, liczba: done.length };
   }, [entries, year]);
 
+  const invoicesData = useMemo(() => computeInvoicesByYear(entries, year), [entries, year]);
+
   const calendarCells = useMemo(() => {
     const first = new Date(year, activeTab, 1);
     const daysInMonth = new Date(year, activeTab + 1, 0).getDate();
@@ -980,11 +1016,13 @@ function App() {
         upcomingCount={upcomingData.upcoming.length + upcomingData.overdue.length}
         overdueCount={upcomingData.overdue.length}
         completedCount={completedData.liczba}
+        invoicesCount={invoicesData.totalCount}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
-        onAddFreeDay={() => openFreeDayForm()}
+        onAddFreeDay={() => setShowFreeDaysList(true)}
         onGoUpcoming={() => setView("upcoming")}
         onGoCompleted={() => setView("wykonane")}
+        onGoFaktury={() => setView("faktury")}
         onGoOverdue={() => setView("overdue")}
         onGoSummary={() => setView("summary")}
         onGoClients={() => setView("clients")}
@@ -1056,6 +1094,9 @@ function App() {
             onAddForDay={(dateStr) => openAddClientForm(dateStr)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
+        )}
+        {view === "faktury" && (
+          <FakturyView data={invoicesData} year={year} onEdit={openEditForm} />
         )}
         {view === "clients" && (
           <ClientsView
@@ -1161,6 +1202,16 @@ function App() {
           confirmLabel="Przenieś mimo to"
           onConfirm={() => performMove(true)}
           onCancel={() => setMoveConflict(null)}
+        />
+      )}
+
+      {showFreeDaysList && !showFreeDayForm && (
+        <FreeDaysListModal
+          freeDays={freeDays}
+          year={year}
+          onAddNew={() => { setShowFreeDaysList(false); openFreeDayForm(); }}
+          onRemove={removeFreeDay}
+          onClose={() => setShowFreeDaysList(false)}
         />
       )}
 
@@ -1317,7 +1368,7 @@ function TabBar({ activeTab, view, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, overdueCount, completedCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoOverdue, onGoSummary, onGoClients }) {
+function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
       <div className="flex gap-2 flex-wrap">
@@ -1377,6 +1428,21 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, onAddCli
               style={{ background: view === "wykonane" ? "rgba(255,255,255,0.25)" : PRIMARY_DARK, color: "white" }}
             >
               {completedCount}
+            </span>
+          </button>
+        )}
+        {invoicesCount > 0 && (
+          <button
+            onClick={onGoFaktury}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+            style={{ background: view === "faktury" ? GOLD : "#FDF3E0", color: view === "faktury" ? "white" : GOLD }}
+          >
+            <Receipt size={14} /> Faktury
+            <span
+              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
+              style={{ background: view === "faktury" ? "rgba(255,255,255,0.25)" : GOLD, color: "white" }}
+            >
+              {invoicesCount}
             </span>
           </button>
         )}
@@ -2273,33 +2339,93 @@ function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
   );
 }
 
-function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit }) {
-  const invoicesByMonth = useMemo(() => {
-    const filtered = (entries || []).filter(
-      (e) => e.fakturaVat && e.klient && e.klient.trim() && e.data && e.data.startsWith(String(year)) && e.statusZlecenia !== "Odwołane"
-    );
-    const groups = {};
-    filtered.forEach((e) => {
-      const monthIdx = new Date(e.data + "T00:00:00").getMonth();
-      if (!groups[monthIdx]) groups[monthIdx] = {};
-      if (!groups[monthIdx][e.klient]) groups[monthIdx][e.klient] = { total: 0, count: 0, entries: [] };
-      groups[monthIdx][e.klient].total += Number(e.zarobki) || 0;
-      groups[monthIdx][e.klient].count += 1;
-      groups[monthIdx][e.klient].entries.push(e);
-    });
-    return Object.keys(groups)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .map((monthIdx) => ({
-        monthIdx,
-        monthName: MONTH_NAMES[monthIdx],
-        clients: Object.entries(groups[monthIdx])
-          .map(([klient, data]) => ({ klient, ...data }))
-          .sort((a, b) => b.total - a.total),
-      }));
-  }, [entries, year]);
+function FakturyView({ data, year, onEdit }) {
+  const [expanded, setExpanded] = useState(null); // "monthIdx-klient" | null
 
-  const totalInvoices = invoicesByMonth.reduce((s, m) => s + m.clients.reduce((s2, c) => s2 + c.count, 0), 0);
+  return (
+    <div className="space-y-6">
+      <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: GOLD }}>
+        <Receipt size={22} /> Faktury VAT <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
+      </h2>
+
+      <div className="flex gap-3 flex-wrap">
+        <KpiCard icon={Receipt} label="Do wystawienia" value={data.totalCount} accent={GOLD} />
+        <KpiCard icon={Wallet} label="Łączna kwota" value={fmtPLN(data.totalValue)} accent={GOLD} />
+      </div>
+
+      {data.months.length === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          Brak zleceń oznaczonych „Potrzebna Faktura VAT" w {year} roku.
+        </div>
+      ) : (
+        <InvoicesSection months={data.months} totalCount={data.totalCount} onEdit={onEdit} expanded={expanded} setExpanded={setExpanded} />
+      )}
+    </div>
+  );
+}
+
+function InvoicesSection({ months, totalCount, onEdit, expanded, setExpanded }) {
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: LINE_COLOR }}>
+        <Receipt size={16} color={GOLD} />
+        <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
+          Faktury VAT do wystawienia <span style={{ color: "#8CA098", fontWeight: 400 }}>({totalCount} {totalCount === 1 ? "zlecenie" : "zleceń"})</span>
+        </h3>
+      </div>
+      <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+        {months.map((m) => (
+          <div key={m.monthIdx}>
+            <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ background: "#FAFBFA", color: "#5B6E67" }}>
+              {m.monthName}
+            </div>
+            {m.clients.map((c) => {
+              const key = `${m.monthIdx}-${c.klient}`;
+              const isExpanded = expanded === key;
+              return (
+                <div key={key}>
+                  <button
+                    onClick={() => setExpanded(isExpanded ? null : key)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
+                  >
+                    <div className="flex-1 text-sm font-medium">{c.klient}</div>
+                    <div className="text-xs" style={{ color: "#8CA098" }}>
+                      {c.count} {c.count === 1 ? "zlecenie" : "zleceń"}
+                    </div>
+                    <div style={{ fontFamily: MONO_FONT, fontWeight: 700, color: GOLD, minWidth: 90, textAlign: "right" }}>
+                      {fmtPLN(c.total)}
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="pl-4 pb-2">
+                      {c.entries.sort(compareEntries).map((e) => (
+                        <button
+                          key={e.id}
+                          onClick={() => onEdit && onEdit(e)}
+                          className="w-full flex items-center gap-3 px-4 py-1.5 text-left hover:bg-gray-50 transition text-xs rounded-lg"
+                          style={{ color: "#5B6E67" }}
+                        >
+                          <span style={{ fontFamily: MONO_FONT, minWidth: 44 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
+                          <span className="flex-1">{e.opisUslugi || "—"}</span>
+                          <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit }) {
+  const invoicesData = useMemo(() => computeInvoicesByYear(entries, year), [entries, year]);
+  const invoicesByMonth = invoicesData.months;
+  const totalInvoices = invoicesData.totalCount;
   const [expanded, setExpanded] = useState(null); // "monthIdx-klient" | null
 
   return (
@@ -2384,59 +2510,7 @@ function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit }) {
       </div>
 
       {invoicesByMonth.length > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
-          <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: LINE_COLOR }}>
-            <Receipt size={16} color={GOLD} />
-            <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
-              Faktury VAT do wystawienia <span style={{ color: "#8CA098", fontWeight: 400 }}>({totalInvoices} {totalInvoices === 1 ? "zlecenie" : "zleceń"})</span>
-            </h3>
-          </div>
-          <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-            {invoicesByMonth.map((m) => (
-              <div key={m.monthIdx}>
-                <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ background: "#FAFBFA", color: "#5B6E67" }}>
-                  {m.monthName}
-                </div>
-                {m.clients.map((c) => {
-                  const key = `${m.monthIdx}-${c.klient}`;
-                  const isExpanded = expanded === key;
-                  return (
-                    <div key={key}>
-                      <button
-                        onClick={() => setExpanded(isExpanded ? null : key)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
-                      >
-                        <div className="flex-1 text-sm font-medium">{c.klient}</div>
-                        <div className="text-xs" style={{ color: "#8CA098" }}>
-                          {c.count} {c.count === 1 ? "zlecenie" : "zleceń"}
-                        </div>
-                        <div style={{ fontFamily: MONO_FONT, fontWeight: 700, color: GOLD, minWidth: 90, textAlign: "right" }}>
-                          {fmtPLN(c.total)}
-                        </div>
-                      </button>
-                      {isExpanded && (
-                        <div className="pl-4 pb-2">
-                          {c.entries.sort(compareEntries).map((e) => (
-                            <button
-                              key={e.id}
-                              onClick={() => onEdit && onEdit(e)}
-                              className="w-full flex items-center gap-3 px-4 py-1.5 text-left hover:bg-gray-50 transition text-xs rounded-lg"
-                              style={{ color: "#5B6E67" }}
-                            >
-                              <span style={{ fontFamily: MONO_FONT, minWidth: 44 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
-                              <span className="flex-1">{e.opisUslugi || "—"}</span>
-                              <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
+        <InvoicesSection months={invoicesByMonth} totalCount={totalInvoices} onEdit={onEdit} expanded={expanded} setExpanded={setExpanded} />
       )}
 
       <MonthlyTable months={yearData.months} totals={yearData} />
@@ -3061,6 +3135,56 @@ function BackupsPanel({ backups, loading, hasFirebase, onExport, onImportFile, o
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FreeDaysListModal({ freeDays, year, onAddNew, onRemove, onClose }) {
+  const list = freeDays
+    .filter((d) => d.date && d.date.startsWith(String(year)))
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: "#8A6A1F" }}>
+            <Umbrella size={17} /> Dni wolne <span style={{ color: "#8CA098", fontWeight: 400, fontSize: "1rem" }}>{year}</span>
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+
+        <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <button
+            onClick={onAddNew}
+            className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold"
+            style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}
+          >
+            + Zaplanuj dzień wolny
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {list.length === 0 ? (
+            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak zaplanowanych dni wolnych w {year} roku.</div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+              {list.map((fd) => (
+                <div key={fd.id} className="flex items-center gap-3 px-5 py-3">
+                  <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: 100 }}>
+                    {fd.date.slice(8, 10)}.{fd.date.slice(5, 7)} · {weekdayName(fd.date).slice(0, 3)}
+                  </div>
+                  <div className="flex-1 text-sm truncate" style={{ color: INK }}>{fd.opis || "—"}</div>
+                  <button onClick={() => onRemove(fd.id)} className="p-1.5 rounded-md hover:bg-red-50 transition flex-shrink-0" title="Usuń dzień wolny">
+                    <Trash2 size={14} color={CORAL} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
