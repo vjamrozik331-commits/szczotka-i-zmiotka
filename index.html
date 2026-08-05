@@ -1632,8 +1632,8 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
               const isPlanned = orderStatus === "Zaplanowane";
               const isOverdue = isPlanned && e.data && e.data < todayStr();
               return (
+                <React.Fragment key={e.id}>
                 <tr
-                  key={e.id}
                   className="border-t transition hover:bg-gray-50"
                   style={{
                     borderColor: LINE_COLOR,
@@ -1689,8 +1689,10 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
                       <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_STYLES[e.status] || ""}`}>{e.status}</span>
                     ) : "—"}
                   </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1 justify-end">
+                </tr>
+                <tr key={`${e.id}-actions`} className="border-t" style={{ borderColor: LINE_COLOR, background: isCancelled ? "#FAFAFA" : isPlanned ? "#F7FAFD" : weekend ? "#FAF8F3" : "transparent", opacity: isCancelled ? 0.55 : 1 }}>
+                  <td colSpan={headers.length} className="px-3 pb-2.5 pt-0">
+                    <div className="flex items-center gap-1">
                       {isPlanned && (
                         <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
                           <CheckCircle2 size={14} color={PRIMARY} />
@@ -1710,6 +1712,7 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
                     </div>
                   </td>
                 </tr>
+                </React.Fragment>
               );
             })}
           </tbody>
