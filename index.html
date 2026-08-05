@@ -1728,6 +1728,7 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
 function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const totalValue = overdue.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
   const [dayDetail, setDayDetail] = useState(null); // dateStr | null
+  const [detail, setDetail] = useState(null); // "zalegle" | null
 
   const monthGroups = useMemo(() => {
     const groups = {};
@@ -1750,8 +1751,8 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
       </h2>
 
       <div className="flex gap-3 flex-wrap">
-        <KpiCard icon={AlertTriangle} label="Zaległe" value={overdue.length} accent={CORAL} />
-        <KpiCard icon={Wallet} label="Wartość zaległych" value={fmtPLN(totalValue)} accent={CORAL} />
+        <KpiCard icon={AlertTriangle} label="Zaległe" value={overdue.length} accent={CORAL} onClick={() => setDetail("zalegle")} />
+        <KpiCard icon={Wallet} label="Wartość zaległych" value={fmtPLN(totalValue)} accent={CORAL} onClick={() => setDetail("zalegle")} />
       </div>
 
       {overdue.length === 0 ? (
@@ -1788,6 +1789,20 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
           onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
           onMove={(e) => { onMove(e); setDayDetail(null); }}
           onClose={() => setDayDetail(null)}
+        />
+      )}
+
+      {detail && (
+        <KpiDetailModal
+          type="zalegle"
+          entries={overdue}
+          freeDays={[]}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMarkDone={onMarkDone}
+          onMove={onMove}
+          onClose={() => setDetail(null)}
         />
       )}
     </div>
