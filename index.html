@@ -326,9 +326,8 @@ function App() {
   const [moveInfo, setMoveInfo] = useState(null);
   const [moveConflict, setMoveConflict] = useState(null);
   const [showFreeDaysList, setShowFreeDaysList] = useState(false);
-  const [editingFreeDay, setEditingFreeDay] = useState(null); // freeDay obiekt lub null
-  const [freeDayEditForm, setFreeDayEditForm] = useState({ date: "", opis: "" });
-  const [movingFreeDay, setMovingFreeDay] = useState(null); // freeDay obiekt lub null
+  const [editingFreeDayGroup, setEditingFreeDayGroup] = useState(null); // { ids, startDate, endDate, opis } lub null
+  const [movingFreeDayGroup, setMovingFreeDayGroup] = useState(null); // { ids, startDate, endDate, opis } lub null
   const [movingFreeDayDate, setMovingFreeDayDate] = useState("");
   const [showFreeDayForm, setShowFreeDayForm] = useState(false);
   const [freeDayForm, setFreeDayForm] = useState({ start: "", end: "", opis: "" });
@@ -908,7 +907,15 @@ function App() {
   }
 
   function openFreeDayForm(dateStr) {
+    setEditingFreeDayGroup(null);
     setFreeDayForm({ start: dateStr || "", end: dateStr || "", opis: "" });
+    setFreeDayConflict(null);
+    setShowFreeDayForm(true);
+  }
+
+  function openEditFreeDayGroup(group) {
+    setEditingFreeDayGroup(group);
+    setFreeDayForm({ start: group.startDate, end: group.endDate, opis: group.opis || "" });
     setFreeDayConflict(null);
     setShowFreeDayForm(true);
   }
@@ -936,8 +943,10 @@ function App() {
   }
 
   function commitFreeDays(days) {
-    const existing = new Set(freeDays.map((f) => f.date));
-    const next = [...freeDays];
+    // Przy edycji istniejącego zakresu najpierw usuwamy jego stare dni, żeby nie zdublować.
+    const base = editingFreeDayGroup ? freeDays.filter((f) => !editingFreeDayGroup.ids.includes(f.id)) : freeDays;
+    const existing = new Set(base.map((f) => f.date));
+    const next = [...base];
     days.forEach((ds) => {
       if (!existing.has(ds)) {
         next.push({ id: Date.now() + Math.random(), date: ds, opis: freeDayForm.opis.trim() });
@@ -947,40 +956,37 @@ function App() {
     syncToFirestore(entries, next);
     setShowFreeDayForm(false);
     setFreeDayConflict(null);
+    setEditingFreeDayGroup(null);
   }
 
-  function removeFreeDay(id) {
-    const next = freeDays.filter((d) => d.id !== id);
+  function removeFreeDayGroup(ids) {
+    const next = freeDays.filter((d) => !ids.includes(d.id));
     setFreeDays(next);
     syncToFirestore(entries, next);
   }
 
-  function openEditFreeDay(fd) {
-    setEditingFreeDay(fd);
-    setFreeDayEditForm({ date: fd.date, opis: fd.opis || "" });
-  }
-
-  function saveFreeDayEdit() {
-    if (!editingFreeDay || !freeDayEditForm.date) return;
-    const next = freeDays.map((d) =>
-      d.id === editingFreeDay.id ? { ...d, date: freeDayEditForm.date, opis: freeDayEditForm.opis.trim() } : d
-    );
-    setFreeDays(next);
-    syncToFirestore(entries, next);
-    setEditingFreeDay(null);
-  }
-
-  function openMoveFreeDay(fd) {
-    setMovingFreeDay(fd);
-    setMovingFreeDayDate(fd.date);
+  function openMoveFreeDayGroup(group) {
+    setMovingFreeDayGroup(group);
+    setMovingFreeDayDate(group.startDate);
   }
 
   function saveFreeDayMove() {
-    if (!movingFreeDay || !movingFreeDayDate) return;
-    const next = freeDays.map((d) => (d.id === movingFreeDay.id ? { ...d, date: movingFreeDayDate } : d));
+    if (!movingFreeDayGroup || !movingFreeDayDate) return;
+    const oldStart = new Date(movingFreeDayGroup.startDate + "T00:00:00");
+    const newStart = new Date(movingFreeDayDate + "T00:00:00");
+    const deltaDays = Math.round((newStart - oldStart) / (1000 * 60 * 60 * 24));
+    const base = freeDays.filter((d) => !movingFreeDayGroup.ids.includes(d.id));
+    const moved = movingFreeDayGroup.ids.map((id) => {
+      const orig = freeDays.find((d) => d.id === id);
+      const d = new Date(orig.date + "T00:00:00");
+      d.setDate(d.getDate() + deltaDays);
+      const newDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return { ...orig, date: newDate };
+    });
+    const next = [...base, ...moved];
     setFreeDays(next);
     syncToFirestore(entries, next);
-    setMovingFreeDay(null);
+    setMovingFreeDayGroup(null);
   }
 
   function openAddClientRecord() {
@@ -1082,7 +1088,7 @@ function App() {
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
             onMove={openMove}
-            onRemoveFreeDay={removeFreeDay}
+            onRemoveFreeDay={(id) => removeFreeDayGroup([id])}
             onGoUpcoming={() => setView("upcoming")}
           />
         )}
@@ -1237,32 +1243,23 @@ function App() {
         />
       )}
 
-      {showFreeDaysList && !showFreeDayForm && !editingFreeDay && !movingFreeDay && (
+      {showFreeDaysList && !showFreeDayForm && !movingFreeDayGroup && (
         <FreeDaysListModal
           freeDays={freeDays}
           year={year}
           onAddNew={() => { setShowFreeDaysList(false); openFreeDayForm(); }}
-          onEdit={openEditFreeDay}
-          onMove={openMoveFreeDay}
-          onRemove={removeFreeDay}
+          onEdit={openEditFreeDayGroup}
+          onMove={openMoveFreeDayGroup}
+          onRemove={(group) => removeFreeDayGroup(group.ids)}
           onClose={() => setShowFreeDaysList(false)}
         />
       )}
 
-      {editingFreeDay && (
-        <FreeDayEditModal
-          form={freeDayEditForm}
-          onChange={(field, value) => setFreeDayEditForm((f) => ({ ...f, [field]: value }))}
-          onClose={() => setEditingFreeDay(null)}
-          onSave={saveFreeDayEdit}
-        />
-      )}
-
-      {movingFreeDay && (
+      {movingFreeDayGroup && (
         <FreeDayMoveModal
           date={movingFreeDayDate}
           onChange={setMovingFreeDayDate}
-          onClose={() => setMovingFreeDay(null)}
+          onClose={() => setMovingFreeDayGroup(null)}
           onSave={saveFreeDayMove}
         />
       )}
@@ -1270,8 +1267,9 @@ function App() {
       {showFreeDayForm && !freeDayConflict && (
         <FreeDayModal
           form={freeDayForm}
+          isEditing={!!editingFreeDayGroup}
           onChange={(field, value) => setFreeDayForm((f) => ({ ...f, [field]: value }))}
-          onClose={() => setShowFreeDayForm(false)}
+          onClose={() => { setShowFreeDayForm(false); setEditingFreeDayGroup(null); }}
           onSave={() => saveFreeDays(false)}
         />
       )}
@@ -3194,10 +3192,30 @@ function BackupsPanel({ backups, loading, hasFirebase, onExport, onImportFile, o
 }
 
 function FreeDaysListModal({ freeDays, year, onAddNew, onEdit, onMove, onRemove, onClose }) {
-  const list = freeDays
-    .filter((d) => d.date && d.date.startsWith(String(year)))
-    .slice()
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const groups = useMemo(() => {
+    const sorted = freeDays
+      .filter((d) => d.date && d.date.startsWith(String(year)))
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const result = [];
+    let current = null;
+    sorted.forEach((fd) => {
+      const opis = fd.opis || "";
+      if (current) {
+        const prevDate = new Date(current.endDate + "T00:00:00");
+        const thisDate = new Date(fd.date + "T00:00:00");
+        const diffDays = Math.round((thisDate - prevDate) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1 && opis === current.opis) {
+          current.endDate = fd.date;
+          current.ids.push(fd.id);
+          return;
+        }
+      }
+      current = { ids: [fd.id], startDate: fd.date, endDate: fd.date, opis };
+      result.push(current);
+    });
+    return result;
+  }, [freeDays, year]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
@@ -3220,69 +3238,43 @@ function FreeDaysListModal({ freeDays, year, onAddNew, onEdit, onMove, onRemove,
         </div>
 
         <div className="overflow-y-auto flex-1">
-          {list.length === 0 ? (
+          {groups.length === 0 ? (
             <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak zaplanowanych dni wolnych w {year} roku.</div>
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-              {list.map((fd) => (
-                <div key={fd.id} className="px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: 100 }}>
-                      {fd.date.slice(8, 10)}.{fd.date.slice(5, 7)} · {weekdayName(fd.date).slice(0, 3)}
+              {groups.map((g) => {
+                const isRange = g.startDate !== g.endDate;
+                return (
+                  <div key={g.ids[0]} className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: isRange ? 140 : 100 }}>
+                        {isRange
+                          ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} – ${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
+                          : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} · ${weekdayName(g.startDate).slice(0, 3)}`}
+                      </div>
+                      <div className="flex-1 text-sm truncate" style={{ color: INK }}>{g.opis || "—"}</div>
+                      {isRange && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
+                          {g.ids.length} dni
+                        </span>
+                      )}
                     </div>
-                    <div className="flex-1 text-sm truncate" style={{ color: INK }}>{fd.opis || "—"}</div>
+                    <div className="flex items-center gap-1 mt-2">
+                      <button onClick={() => onMove(g)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                        <Move size={14} color="#2A5C8A" />
+                      </button>
+                      <button onClick={() => onEdit(g)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onRemove(g)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń dzień wolny">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <button onClick={() => onMove(fd)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
-                      <Move size={14} color="#2A5C8A" />
-                    </button>
-                    <button onClick={() => onEdit(fd)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
-                      <Pencil size={14} color="#5B6E67" />
-                    </button>
-                    <button onClick={() => onRemove(fd.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń dzień wolny">
-                      <Trash2 size={14} color={CORAL} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FreeDayEditModal({ form, onChange, onClose, onSave }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
-      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
-          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: "#8A6A1F" }}>
-            Edytuj dzień wolny
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <FormField label="Data">
-            <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.date} onChange={(e) => onChange("date", e.target.value)} />
-          </FormField>
-          <FormField label="Opis (opcjonalnie)">
-            <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.opis} onChange={(e) => onChange("opis", e.target.value)} placeholder="np. Warszawa, wyjazd rodzinny" />
-          </FormField>
-        </div>
-        <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
-            Anuluj
-          </button>
-          <button
-            onClick={onSave}
-            disabled={!form.date}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
-            style={{ background: "#8A6A1F" }}
-          >
-            Zapisz
-          </button>
         </div>
       </div>
     </div>
@@ -3322,13 +3314,13 @@ function FreeDayMoveModal({ date, onChange, onClose, onSave }) {
   );
 }
 
-function FreeDayModal({ form, onChange, onClose, onSave }) {
+function FreeDayModal({ form, isEditing, onChange, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
       <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
           <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: "#8A6A1F" }}>
-            Zaplanuj dzień wolny
+            {isEditing ? "Edytuj dzień wolny" : "Zaplanuj dzień wolny"}
           </h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
