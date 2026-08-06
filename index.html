@@ -488,7 +488,6 @@ function App() {
   function loadBackupsList() {
     if (!window.firebaseDb) return;
     setBackupsLoading(true);
-    setBackupsError(null);
     window.firebaseDb.collection("app-data").doc("entries").collection("backups")
       .get()
       .then((snap) => {
@@ -497,6 +496,11 @@ function App() {
         list.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0) || b.id.localeCompare(a.id));
         setBackupsList(list.slice(0, 30));
         setBackupsLoading(false);
+        // Czytanie się udało — jeśli faktycznie są jakieś kopie, to dowód że wszystko działa,
+        // więc czyścimy ewentualny stary błąd zapisu. Jeśli lista jest pusta, zostawiamy
+        // błąd zapisu widoczny (jeśli jakiś wystąpił) zamiast go przedwcześnie kasować —
+        // udane odczytanie pustej kolekcji nie dowodzi, że zapisy też działają.
+        if (list.length > 0) setBackupsError(null);
       })
       .catch((err) => {
         setBackupsError(err && err.message ? err.message : String(err));
