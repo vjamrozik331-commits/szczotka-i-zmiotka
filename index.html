@@ -341,6 +341,7 @@ function App() {
   const [doneForm, setDoneForm] = useState({ zarobki: "", godziny: "" });
   const [backupsList, setBackupsList] = useState([]);
   const [backupsLoading, setBackupsLoading] = useState(false);
+  const [backupsError, setBackupsError] = useState(null);
   const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
   const [saveState, setSaveState] = useState("idle");
   const [undoHistory, setUndoHistory] = useState([]);
@@ -437,8 +438,12 @@ function App() {
         docRef.collection("backups").doc(todayKey).set({
           items: nextEntries, freeDays: nextFreeDays, clients: clientsToSave,
           savedAt: Date.now(),
-        }).catch(() => {});
-      } catch (e) {}
+        })
+          .then(() => setBackupsError(null))
+          .catch((err) => setBackupsError(err && err.message ? err.message : String(err)));
+      } catch (e) {
+        setBackupsError(e && e.message ? e.message : String(e));
+      }
     }
   }
 
@@ -483,17 +488,20 @@ function App() {
   function loadBackupsList() {
     if (!window.firebaseDb) return;
     setBackupsLoading(true);
+    setBackupsError(null);
     window.firebaseDb.collection("app-data").doc("entries").collection("backups")
-      .orderBy(window.firebase.firestore.FieldPath.documentId(), "desc")
-      .limit(30)
       .get()
       .then((snap) => {
         const list = [];
         snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
-        setBackupsList(list);
+        list.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0) || b.id.localeCompare(a.id));
+        setBackupsList(list.slice(0, 30));
         setBackupsLoading(false);
       })
-      .catch(() => setBackupsLoading(false));
+      .catch((err) => {
+        setBackupsError(err && err.message ? err.message : String(err));
+        setBackupsLoading(false);
+      });
   }
 
   function restoreBackup(backup) {
@@ -1168,6 +1176,7 @@ function App() {
         <BackupsPanel
           backups={backupsList}
           loading={backupsLoading}
+          error={backupsError}
           hasFirebase={!!window.firebaseDb}
           onExport={exportBackupFile}
           onImportFile={handleImportFile}
@@ -3101,7 +3110,7 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
   );
 }
 
-function BackupsPanel({ backups, loading, hasFirebase, onExport, onImportFile, onRestore, onClose }) {
+function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImportFile, onRestore, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
       <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
@@ -3159,13 +3168,20 @@ function BackupsPanel({ backups, loading, hasFirebase, onExport, onImportFile, o
                 Automatyczne kopie w chmurze są dostępne tylko, gdy aplikacja jest połączona z bazą danych.
               </div>
             )}
-            {hasFirebase && loading && (
+            {hasFirebase && error && (
+              <div className="text-xs p-3 rounded-lg space-y-1" style={{ background: "#FCE9E7", color: CORAL }}>
+                <div className="font-semibold">Nie udało się połączyć z kopiami w chmurze.</div>
+                <div style={{ fontFamily: MONO_FONT, opacity: 0.85 }}>{error}</div>
+                <div>Najczęstsza przyczyna: reguły bezpieczeństwa Firestore nie zostały opublikowane albo nie obejmują podkolekcji „backups".</div>
+              </div>
+            )}
+            {hasFirebase && !error && loading && (
               <div className="text-sm text-center py-6" style={{ color: "#8CA098" }}>Wczytywanie…</div>
             )}
-            {hasFirebase && !loading && backups.length === 0 && (
+            {hasFirebase && !error && !loading && backups.length === 0 && (
               <div className="text-sm text-center py-6" style={{ color: "#8CA098" }}>Jeszcze brak zapisanych kopii — pojawią się automatycznie po dzisiejszych zmianach.</div>
             )}
-            {hasFirebase && !loading && backups.length > 0 && (
+            {hasFirebase && !error && !loading && backups.length > 0 && (
               <div className="space-y-2">
                 {backups.map((b) => (
                   <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg" style={{ border: `1px solid ${LINE_COLOR}` }}>
