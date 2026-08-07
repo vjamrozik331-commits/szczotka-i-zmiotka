@@ -342,6 +342,8 @@ function App() {
   const [backupsList, setBackupsList] = useState([]);
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [backupsError, setBackupsError] = useState(null);
+  const [backupsTesting, setBackupsTesting] = useState(false);
+  const [backupsTestResult, setBackupsTestResult] = useState(null); // { ok: true } | { ok: false, message } | null
   const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
   const [saveState, setSaveState] = useState("idle");
   const [undoHistory, setUndoHistory] = useState([]);
@@ -416,6 +418,16 @@ function App() {
   // Firestore listener itself. This is what prevents a device that just loaded a
   // (possibly momentarily stale) snapshot from echoing it back and clobbering a
   // newer write made from another device in the meantime.
+  function writeBackupSnapshot(nextEntries, nextFreeDays, nextClients) {
+    if (!window.firebaseDb) return Promise.reject(new Error("Brak połączenia z bazą danych (window.firebaseDb nie istnieje)"));
+    const docRef = window.firebaseDb.collection("app-data").doc("entries");
+    const todayKey = todayStr();
+    return docRef.collection("backups").doc(todayKey).set({
+      items: nextEntries, freeDays: nextFreeDays, clients: nextClients,
+      savedAt: Date.now(),
+    });
+  }
+
   function persistState(nextEntries, nextFreeDays, nextClients) {
     const clientsToSave = nextClients !== undefined ? nextClients : clients;
     try {
@@ -433,18 +445,27 @@ function App() {
       // Nadpisuje się przez cały dzień (zawsze trzyma najnowszy stan z danego dnia), a od
       // północy zaczyna nowy, osobny dokument — więc z czasem powstaje historia dzień po dniu,
       // z której można w razie czego przywrócić dane sprzed awarii czy pomyłki.
-      try {
-        const todayKey = todayStr();
-        docRef.collection("backups").doc(todayKey).set({
-          items: nextEntries, freeDays: nextFreeDays, clients: clientsToSave,
-          savedAt: Date.now(),
-        })
-          .then(() => setBackupsError(null))
-          .catch((err) => setBackupsError(err && err.message ? err.message : String(err)));
-      } catch (e) {
-        setBackupsError(e && e.message ? e.message : String(e));
-      }
+      writeBackupSnapshot(nextEntries, nextFreeDays, clientsToSave)
+        .then(() => setBackupsError(null))
+        .catch((err) => setBackupsError(err && err.message ? err.message : String(err)));
     }
+  }
+
+  function testBackupWrite() {
+    setBackupsTesting(true);
+    setBackupsTestResult(null);
+    writeBackupSnapshot(entries, freeDays, clients)
+      .then(() => {
+        setBackupsTesting(false);
+        setBackupsTestResult({ ok: true });
+        loadBackupsList();
+      })
+      .catch((err) => {
+        setBackupsTesting(false);
+        const message = err && err.message ? err.message : String(err);
+        setBackupsTestResult({ ok: false, message });
+        setBackupsError(message);
+      });
   }
 
   // Cofnij — jedno naciśnięcie cofa jedną zmianę. Przed każdą modyfikacją odkładamy na stos
@@ -1186,6 +1207,9 @@ function App() {
           onImportFile={handleImportFile}
           onRestore={(b) => setConfirmRestoreBackup(b)}
           onClose={() => setShowBackupsPanel(false)}
+          onTestSave={testBackupWrite}
+          testing={backupsTesting}
+          testResult={backupsTestResult}
         />
       )}
 
@@ -3114,7 +3138,7 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
   );
 }
 
-function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImportFile, onRestore, onClose }) {
+function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImportFile, onRestore, onClose, onTestSave, testing, testResult }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
       <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
@@ -3160,6 +3184,35 @@ function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImport
               />
             </label>
           </div>
+
+          <div className="h-px" style={{ background: LINE_COLOR }} />
+
+          {hasFirebase && (
+            <div>
+              <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
+                Kopia w chmurze nie pojawia się? Sprawdź to na miejscu — poniższy przycisk od razu spróbuje zapisać i pokaże dokładny wynik.
+              </p>
+              <button
+                onClick={onTestSave}
+                disabled={testing}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold border disabled:opacity-50"
+                style={{ borderColor: "#2A5C8A", color: "#2A5C8A" }}
+              >
+                {testing ? "Zapisywanie…" : "Sprawdź teraz — zapisz kopię"}
+              </button>
+              {testResult && testResult.ok && (
+                <div className="text-xs p-3 rounded-lg mt-2" style={{ background: "#E4F3EC", color: PRIMARY_DARK }}>
+                  ✓ Zapis się udał. Kopia z dzisiejszą datą powinna być widoczna na liście poniżej.
+                </div>
+              )}
+              {testResult && !testResult.ok && (
+                <div className="text-xs p-3 rounded-lg mt-2 space-y-1" style={{ background: "#FCE9E7", color: CORAL }}>
+                  <div className="font-semibold">✕ Zapis się nie udał.</div>
+                  <div style={{ fontFamily: MONO_FONT, opacity: 0.85 }}>{testResult.message}</div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="h-px" style={{ background: LINE_COLOR }} />
 
