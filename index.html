@@ -515,7 +515,7 @@ function App() {
         const list = [];
         snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
         list.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0) || b.id.localeCompare(a.id));
-        setBackupsList(list.slice(0, 30));
+        setBackupsList(list.slice(0, 5));
         setBackupsLoading(false);
         // Czytanie się udało — jeśli faktycznie są jakieś kopie, to dowód że wszystko działa,
         // więc czyścimy ewentualny stary błąd zapisu. Jeśli lista jest pusta, zostawiamy
@@ -3139,6 +3139,7 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
 }
 
 function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImportFile, onRestore, onClose, onTestSave, testing, testResult }) {
+  const [showDailyList, setShowDailyList] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
       <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
@@ -3218,7 +3219,7 @@ function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImport
 
           <div>
             <p className="text-sm mb-2" style={{ color: "#5B6E67" }}>
-              Aplikacja sama zapisuje codzienną kopię danych w chmurze — w razie pomyłki możesz wrócić do dowolnego dnia z ostatnich 30.
+              Aplikacja sama zapisuje codzienną kopię danych w chmurze — w razie pomyłki możesz wrócić do dowolnego dnia z ostatnich 5.
             </p>
             {!hasFirebase && (
               <div className="text-xs p-3 rounded-lg" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
@@ -3239,26 +3240,38 @@ function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImport
               <div className="text-sm text-center py-6" style={{ color: "#8CA098" }}>Jeszcze brak zapisanych kopii — pojawią się automatycznie po dzisiejszych zmianach.</div>
             )}
             {hasFirebase && !error && !loading && backups.length > 0 && (
-              <div className="space-y-2">
-                {backups.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg" style={{ border: `1px solid ${LINE_COLOR}` }}>
-                    <div>
-                      <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: INK }}>
-                        {b.id.split("-").reverse().join(".")}
+              <div>
+                <button
+                  onClick={() => setShowDailyList((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-semibold border transition hover:bg-gray-50"
+                  style={{ borderColor: PRIMARY, color: PRIMARY }}
+                >
+                  <span>Kopie dzienne ({backups.length})</span>
+                  <span style={{ transform: showDailyList ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>▾</span>
+                </button>
+                {showDailyList && (
+                  <div className="space-y-2 mt-2">
+                    {backups.map((b) => (
+                      <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg" style={{ border: `1px solid ${LINE_COLOR}` }}>
+                        <div>
+                          <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: INK }}>
+                            {b.id.split("-").reverse().join(".")}
+                          </div>
+                          <div className="text-xs" style={{ color: "#8CA098" }}>
+                            {(b.items || []).length} wpisów · {(b.clients || []).length} klientów
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => onRestore(b)}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
+                          style={{ borderColor: PRIMARY, color: PRIMARY }}
+                        >
+                          Przywróć
+                        </button>
                       </div>
-                      <div className="text-xs" style={{ color: "#8CA098" }}>
-                        {(b.items || []).length} wpisów · {(b.clients || []).length} klientów
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => onRestore(b)}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border transition hover:bg-gray-50"
-                      style={{ borderColor: PRIMARY, color: PRIMARY }}
-                    >
-                      Przywróć
-                    </button>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
