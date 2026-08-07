@@ -225,9 +225,10 @@ function computeInvoicesByYear(entries, year) {
   filtered.forEach((e) => {
     const monthIdx = new Date(e.data + "T00:00:00").getMonth();
     if (!groups[monthIdx]) groups[monthIdx] = {};
-    if (!groups[monthIdx][e.klient]) groups[monthIdx][e.klient] = { total: 0, count: 0, entries: [] };
+    if (!groups[monthIdx][e.klient]) groups[monthIdx][e.klient] = { total: 0, count: 0, issuedCount: 0, entries: [] };
     groups[monthIdx][e.klient].total += Number(e.zarobki) || 0;
     groups[monthIdx][e.klient].count += 1;
+    if (e.fakturaWystawiona) groups[monthIdx][e.klient].issuedCount += 1;
     groups[monthIdx][e.klient].entries.push(e);
   });
   const months = Object.keys(groups)
@@ -240,10 +241,16 @@ function computeInvoicesByYear(entries, year) {
         .map(([klient, data]) => ({ klient, ...data }))
         .sort((a, b) => b.total - a.total),
     }));
+  const issued = filtered.filter((e) => e.fakturaWystawiona);
+  const pending = filtered.filter((e) => !e.fakturaWystawiona);
   return {
     months,
     totalCount: filtered.length,
     totalValue: filtered.reduce((s, e) => s + (Number(e.zarobki) || 0), 0),
+    issuedCount: issued.length,
+    issuedValue: issued.reduce((s, e) => s + (Number(e.zarobki) || 0), 0),
+    pendingCount: pending.length,
+    pendingValue: pending.reduce((s, e) => s + (Number(e.zarobki) || 0), 0),
   };
 }
 
@@ -896,6 +903,12 @@ function App() {
     syncToFirestore(next, freeDays);
   }
 
+  function toggleInvoiceIssued(id) {
+    const next = entries.map((e) => (e.id === id ? { ...e, fakturaWystawiona: !e.fakturaWystawiona } : e));
+    setEntries(next);
+    syncToFirestore(next, freeDays);
+  }
+
   function openMarkDone(entry) {
     setConfirmDoneEntry(entry);
     setDoneForm({ zarobki: entry.zarobki ?? "", godziny: entry.godziny ?? "" });
@@ -1127,7 +1140,7 @@ function App() {
             onGoUpcoming={() => setView("upcoming")}
           />
         )}
-        {view === "summary" && <SummaryView yearData={yearData} year={year} entries={entries} onGoUpcoming={() => setView("upcoming")} onEdit={openEditForm} />}
+        {view === "summary" && <SummaryView yearData={yearData} year={year} entries={entries} onGoUpcoming={() => setView("upcoming")} onEdit={openEditForm} onToggleInvoice={toggleInvoiceIssued} />}
         {view === "upcoming" && (
           <UpcomingView
             data={upcomingData}
@@ -1169,7 +1182,7 @@ function App() {
           />
         )}
         {view === "faktury" && (
-          <FakturyView data={invoicesData} year={year} onEdit={openEditForm} />
+          <FakturyView data={invoicesData} year={year} onEdit={openEditForm} onToggleInvoice={toggleInvoiceIssued} />
         )}
         {view === "clients" && (
           <ClientsView
@@ -2428,7 +2441,7 @@ function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
   );
 }
 
-function FakturyView({ data, year, onEdit }) {
+function FakturyView({ data, year, onEdit, onToggleInvoice }) {
   const [expanded, setExpanded] = useState(null); // "monthIdx-klient" | null
 
   return (
@@ -2438,8 +2451,8 @@ function FakturyView({ data, year, onEdit }) {
       </h2>
 
       <div className="flex gap-3 flex-wrap">
-        <KpiCard icon={Receipt} label="Do wystawienia" value={data.totalCount} accent={GOLD} />
-        <KpiCard icon={Wallet} label="Łączna kwota" value={fmtPLN(data.totalValue)} accent={GOLD} />
+        <KpiCard icon={Receipt} label="Do wystawienia" value={`${data.pendingCount} · ${fmtPLN(data.pendingValue)}`} accent={GOLD} />
+        <KpiCard icon={CheckCircle2} label="Wystawione" value={`${data.issuedCount} · ${fmtPLN(data.issuedValue)}`} accent={PRIMARY_DARK} />
       </div>
 
       {data.months.length === 0 ? (
@@ -2447,19 +2460,19 @@ function FakturyView({ data, year, onEdit }) {
           Brak zleceń oznaczonych „Potrzebna Faktura VAT" w {year} roku.
         </div>
       ) : (
-        <InvoicesSection months={data.months} totalCount={data.totalCount} onEdit={onEdit} expanded={expanded} setExpanded={setExpanded} />
+        <InvoicesSection months={data.months} totalCount={data.totalCount} onEdit={onEdit} onToggleInvoice={onToggleInvoice} expanded={expanded} setExpanded={setExpanded} />
       )}
     </div>
   );
 }
 
-function InvoicesSection({ months, totalCount, onEdit, expanded, setExpanded }) {
+function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, expanded, setExpanded }) {
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
       <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: LINE_COLOR }}>
         <Receipt size={16} color={GOLD} />
         <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
-          Faktury VAT do wystawienia <span style={{ color: "#8CA098", fontWeight: 400 }}>({totalCount} {totalCount === 1 ? "zlecenie" : "zleceń"})</span>
+          Faktury VAT <span style={{ color: "#8CA098", fontWeight: 400 }}>({totalCount} {totalCount === 1 ? "zlecenie" : "zleceń"})</span>
         </h3>
       </div>
       <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
@@ -2471,16 +2484,35 @@ function InvoicesSection({ months, totalCount, onEdit, expanded, setExpanded }) 
             {m.clients.map((c) => {
               const key = `${m.monthIdx}-${c.klient}`;
               const isExpanded = expanded === key;
+              const allIssued = c.issuedCount === c.count;
+              const noneIssued = c.issuedCount === 0;
               return (
                 <div key={key}>
                   <button
                     onClick={() => setExpanded(isExpanded ? null : key)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition flex-wrap"
                   >
-                    <div className="flex-1 text-sm font-medium">{c.klient}</div>
+                    <div className="flex-1 min-w-[100px] text-sm font-medium">{c.klient}</div>
                     <div className="text-xs" style={{ color: "#8CA098" }}>
                       {c.count} {c.count === 1 ? "zlecenie" : "zleceń"}
                     </div>
+                    {c.count === 1 ? (
+                      <span
+                        role="button"
+                        onClick={(ev) => { ev.stopPropagation(); onToggleInvoice(c.entries[0].id); }}
+                        className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition hover:opacity-80"
+                        style={allIssued ? { background: "#E4F3EC", color: PRIMARY_DARK } : { background: "#FDF6E9", color: "#8A6A1F" }}
+                      >
+                        {allIssued ? <><CheckCircle2 size={11} /> Wystawiona</> : <><Clock size={11} /> Do wystawienia</>}
+                      </span>
+                    ) : (
+                      <span
+                        className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                        style={allIssued ? { background: "#E4F3EC", color: PRIMARY_DARK } : noneIssued ? { background: "#FDF6E9", color: "#8A6A1F" } : { background: "#EAF1F8", color: "#2A5C8A" }}
+                      >
+                        {allIssued ? <><CheckCircle2 size={11} /> Wystawione</> : <><Clock size={11} /> {c.issuedCount}/{c.count} wystawione</>}
+                      </span>
+                    )}
                     <div style={{ fontFamily: MONO_FONT, fontWeight: 700, color: GOLD, minWidth: 90, textAlign: "right" }}>
                       {fmtPLN(c.total)}
                     </div>
@@ -2488,16 +2520,25 @@ function InvoicesSection({ months, totalCount, onEdit, expanded, setExpanded }) 
                   {isExpanded && (
                     <div className="pl-4 pb-2">
                       {c.entries.sort(compareEntries).map((e) => (
-                        <button
+                        <div
                           key={e.id}
-                          onClick={() => onEdit && onEdit(e)}
-                          className="w-full flex items-center gap-3 px-4 py-1.5 text-left hover:bg-gray-50 transition text-xs rounded-lg"
+                          className="flex items-center gap-3 px-4 py-1.5 text-xs rounded-lg"
                           style={{ color: "#5B6E67" }}
                         >
-                          <span style={{ fontFamily: MONO_FONT, minWidth: 44 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
-                          <span className="flex-1">{e.opisUslugi || "—"}</span>
-                          <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
-                        </button>
+                          <button onClick={() => onEdit && onEdit(e)} className="flex items-center gap-3 flex-1 text-left hover:opacity-70 transition">
+                            <span style={{ fontFamily: MONO_FONT, minWidth: 44 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
+                            <span className="flex-1">{e.opisUslugi || "—"}</span>
+                            <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
+                          </button>
+                          <span
+                            role="button"
+                            onClick={() => onToggleInvoice(e.id)}
+                            className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full transition hover:opacity-80"
+                            style={e.fakturaWystawiona ? { background: "#E4F3EC", color: PRIMARY_DARK } : { background: "#FDF6E9", color: "#8A6A1F" }}
+                          >
+                            {e.fakturaWystawiona ? <><CheckCircle2 size={9} /> Wystawiona</> : <><Clock size={9} /> Do wystawienia</>}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -2511,7 +2552,7 @@ function InvoicesSection({ months, totalCount, onEdit, expanded, setExpanded }) 
   );
 }
 
-function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit }) {
+function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit, onToggleInvoice }) {
   const invoicesData = useMemo(() => computeInvoicesByYear(entries, year), [entries, year]);
   const invoicesByMonth = invoicesData.months;
   const totalInvoices = invoicesData.totalCount;
@@ -2599,7 +2640,7 @@ function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit }) {
       </div>
 
       {invoicesByMonth.length > 0 && (
-        <InvoicesSection months={invoicesByMonth} totalCount={totalInvoices} onEdit={onEdit} expanded={expanded} setExpanded={setExpanded} />
+        <InvoicesSection months={invoicesByMonth} totalCount={totalInvoices} onEdit={onEdit} onToggleInvoice={onToggleInvoice} expanded={expanded} setExpanded={setExpanded} />
       )}
 
       <MonthlyTable months={yearData.months} totals={yearData} />
