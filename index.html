@@ -2488,23 +2488,18 @@ function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, expanded
               const noneIssued = c.issuedCount === 0;
               return (
                 <div key={key}>
-                  <button
+                  <div
                     onClick={() => setExpanded(isExpanded ? null : key)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition flex-wrap"
+                    role="button"
+                    tabIndex={0}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition flex-wrap cursor-pointer"
                   >
                     <div className="flex-1 min-w-[100px] text-sm font-medium">{c.klient}</div>
                     <div className="text-xs" style={{ color: "#8CA098" }}>
                       {c.count} {c.count === 1 ? "zlecenie" : "zleceń"}
                     </div>
                     {c.count === 1 ? (
-                      <span
-                        role="button"
-                        onClick={(ev) => { ev.stopPropagation(); onToggleInvoice(c.entries[0].id); }}
-                        className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition hover:opacity-80"
-                        style={allIssued ? { background: "#E4F3EC", color: PRIMARY_DARK } : { background: "#FDF6E9", color: "#8A6A1F" }}
-                      >
-                        {allIssued ? <><CheckCircle2 size={11} /> Wystawiona</> : <><Clock size={11} /> Do wystawienia</>}
-                      </span>
+                      <InvoiceStatusToggle issued={allIssued} onClick={(ev) => { ev.stopPropagation(); onToggleInvoice(c.entries[0].id); }} />
                     ) : (
                       <span
                         className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
@@ -2516,7 +2511,7 @@ function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, expanded
                     <div style={{ fontFamily: MONO_FONT, fontWeight: 700, color: GOLD, minWidth: 90, textAlign: "right" }}>
                       {fmtPLN(c.total)}
                     </div>
-                  </button>
+                  </div>
                   {isExpanded && (
                     <div className="pl-4 pb-2">
                       {c.entries.sort(compareEntries).map((e) => (
@@ -2530,14 +2525,7 @@ function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, expanded
                             <span className="flex-1">{e.opisUslugi || "—"}</span>
                             <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
                           </button>
-                          <span
-                            role="button"
-                            onClick={() => onToggleInvoice(e.id)}
-                            className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full transition hover:opacity-80"
-                            style={e.fakturaWystawiona ? { background: "#E4F3EC", color: PRIMARY_DARK } : { background: "#FDF6E9", color: "#8A6A1F" }}
-                          >
-                            {e.fakturaWystawiona ? <><CheckCircle2 size={9} /> Wystawiona</> : <><Clock size={9} /> Do wystawienia</>}
-                          </span>
+                          <InvoiceStatusToggle issued={!!e.fakturaWystawiona} onClick={() => onToggleInvoice(e.id)} small />
                         </div>
                       ))}
                     </div>
@@ -2549,6 +2537,34 @@ function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, expanded
         ))}
       </div>
     </div>
+  );
+}
+
+function InvoiceStatusToggle({ issued, onClick, small }) {
+  const dot = small ? 12 : 14;
+  const fontSize = small ? "10px" : "12px";
+  const pad = small ? "1.5px 8px 1.5px 5px" : "3.5px 10px 3.5px 6px";
+  const issuedColor = { bg: "#E4F3EC", border: "#639922", text: PRIMARY_DARK };
+  const pendingColor = { bg: "#FDF6E9", border: "#EF9F27", text: "#8A6A1F" };
+  const c = issued ? issuedColor : pendingColor;
+  return (
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 inline-flex items-center gap-1.5 font-semibold rounded-full transition hover:opacity-80"
+      style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, fontSize, padding: pad }}
+    >
+      <span
+        className="flex-shrink-0 flex items-center justify-center rounded-full"
+        style={{
+          width: dot, height: dot,
+          border: issued ? "none" : `1.5px solid ${c.text}`,
+          background: issued ? c.border : "transparent",
+        }}
+      >
+        {issued && <Check size={dot - 5} color="white" strokeWidth={3.5} />}
+      </span>
+      {issued ? "Wystawiona" : "Do wystawienia"}
+    </button>
   );
 }
 
