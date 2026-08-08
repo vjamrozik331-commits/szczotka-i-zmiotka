@@ -1842,24 +1842,24 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
             </div>
             <div className="flex items-center gap-1 mt-2">
               {isPlanned && (
-                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
                   <CheckCircle2 size={15} color={PRIMARY} />
                 </button>
               )}
               {!isZakup && !isCancelled && (
-                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
                   <Ban size={15} color="#8CA098" />
                 </button>
               )}
               {!isCancelled && (
-                <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
                   <Move size={14} color="#2A5C8A" />
                 </button>
               )}
-              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
                 <Pencil size={14} color="#5B6E67" />
               </button>
-              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
                 <Trash2 size={14} color={CORAL} />
               </button>
             </div>
@@ -2239,22 +2239,22 @@ function UpcomingList({ entries, overdue, done, onEdit, onDelete, onSetStatus, o
             </div>
             <div className="flex items-center gap-1 mt-2">
               {!done && (
-                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
                   <CheckCircle2 size={15} color={PRIMARY} />
                 </button>
               )}
               {!done && (
-                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
                   <Ban size={15} color="#8CA098" />
                 </button>
               )}
-              <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+              <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
                 <Move size={14} color="#2A5C8A" />
               </button>
-              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
                 <Pencil size={14} color="#5B6E67" />
               </button>
-              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
                 <Trash2 size={14} color={CORAL} />
               </button>
             </div>
@@ -2328,13 +2328,13 @@ function ClientsView({ clients, entries, search, setSearch, onAdd, onEdit, onDel
                     {c.adres && <div className="text-xs" style={{ color: "#8CA098" }}>{c.adres}</div>}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => onAddOrder(c)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Zaplanuj zlecenie dla tego klienta">
+                    <button onClick={() => onAddOrder(c)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Zaplanuj zlecenie dla tego klienta">
                       <CalendarClock size={14} color={PRIMARY} />
                     </button>
-                    <button onClick={() => onEdit(c)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                    <button onClick={() => onEdit(c)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
                       <Pencil size={14} color="#5B6E67" />
                     </button>
-                    <button onClick={() => onDelete(c.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                    <button onClick={() => onDelete(c.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
                       <Trash2 size={14} color={CORAL} />
                     </button>
                   </div>
@@ -3039,24 +3039,24 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
                     </div>
                     <div className="flex items-center gap-0.5 flex-shrink-0 ml-auto">
                       {isPlanned && (
-                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
                           <CheckCircle2 size={15} color={PRIMARY} />
                         </button>
                       )}
                       {!isZakup && !isCancelled && (
-                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
                           <Ban size={15} color="#8CA098" />
                         </button>
                       )}
                       {!isCancelled && (
-                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
                           <Move size={14} color="#2A5C8A" />
                         </button>
                       )}
-                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
                         <Pencil size={14} color="#5B6E67" />
                       </button>
-                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
                         <Trash2 size={14} color={CORAL} />
                       </button>
                     </div>
@@ -3154,24 +3154,24 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                     </div>
                     <div className="flex items-center gap-1 mt-2">
                       {isPlanned && (
-                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
                           <CheckCircle2 size={15} color={PRIMARY} />
                         </button>
                       )}
                       {!isZakup && !isCancelled && (
-                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
                           <Ban size={15} color="#8CA098" />
                         </button>
                       )}
                       {!isCancelled && (
-                        <button onClick={() => { onMove(e); onClose(); }} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                        <button onClick={() => { onMove(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
                           <Move size={14} color="#2A5C8A" />
                         </button>
                       )}
-                      <button onClick={() => { onEdit(e); onClose(); }} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                      <button onClick={() => { onEdit(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
                         <Pencil size={14} color="#5B6E67" />
                       </button>
-                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
                         <Trash2 size={14} color={CORAL} />
                       </button>
                     </div>
@@ -3438,13 +3438,13 @@ function FreeDaysListModal({ freeDays, year, onAddNew, onEdit, onMove, onRemove,
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-2">
-                      <button onClick={() => onMove(g)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                      <button onClick={() => onMove(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
                         <Move size={14} color="#2A5C8A" />
                       </button>
-                      <button onClick={() => onEdit(g)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                      <button onClick={() => onEdit(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
                         <Pencil size={14} color="#5B6E67" />
                       </button>
-                      <button onClick={() => onRemove(g)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń dzień wolny">
+                      <button onClick={() => onRemove(g)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
                         <Trash2 size={14} color={CORAL} />
                       </button>
                     </div>
