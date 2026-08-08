@@ -2799,15 +2799,16 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
               )}
 
               <FormField label="Status zlecenia">
-                <div className="inline-flex rounded-lg border overflow-hidden w-full" style={{ borderColor: LINE_COLOR }}>
+                <div className="flex gap-2 w-full">
                   {ORDER_STATUSES.map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => onChange("statusZlecenia", s)}
-                      className="flex-1 px-2 py-2 text-xs font-medium transition"
+                      className="flex-1 px-2 py-2.5 text-xs font-medium rounded-full border transition"
                       style={{
                         background: form.statusZlecenia === s ? (s === "Zaplanowane" ? "#2A5C8A" : s === "Odwołane" ? "#8CA098" : PRIMARY) : "transparent",
+                        borderColor: form.statusZlecenia === s ? (s === "Zaplanowane" ? "#2A5C8A" : s === "Odwołane" ? "#8CA098" : PRIMARY) : LINE_COLOR,
                         color: form.statusZlecenia === s ? "white" : "#5B6E67",
                       }}
                     >
@@ -2903,16 +2904,21 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
                 </select>
               </FormField>
 
-              <label className="flex items-center gap-2 text-sm" style={{ color: "#5B6E67" }}>
-                <input
-                  type="checkbox"
-                  checked={form.fakturaVat}
-                  onChange={(e) => onChange("fakturaVat", e.target.checked)}
-                  className="w-4 h-4 rounded"
-                  style={{ accentColor: PRIMARY }}
-                />
+              <button
+                type="button"
+                onClick={() => onChange("fakturaVat", !form.fakturaVat)}
+                className="flex items-center gap-2.5 text-sm"
+                style={{ color: "#5B6E67" }}
+              >
+                {form.fakturaVat ? (
+                  <span className="flex-shrink-0 rounded-full flex items-center justify-center" style={{ width: 20, height: 20, background: PRIMARY }}>
+                    <Check size={12} color="white" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <span className="flex-shrink-0 rounded-full" style={{ width: 20, height: 20, border: `1.5px solid ${LINE_COLOR}` }} />
+                )}
                 Potrzebna Faktura VAT
-              </label>
+              </button>
 
               {formType === "full" && (
                 <FormField label="Uwagi (zlecenie)">
