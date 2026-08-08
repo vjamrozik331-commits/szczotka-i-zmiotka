@@ -1790,115 +1790,82 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
       </div>
     );
   }
-  const headers = showMonth
-    ? ["Data", "Miesiąc", "Klient", "Adres", "Opis", "Godz.", "Zarobki", "Wydatki", "Kategoria", "Zlecenie", "Płatność", ""]
-    : ["Data", "Klient", "Adres", "Opis", "Godz.", "Zarobki", "Wydatki", "Kategoria", "Zlecenie", "Płatność", ""];
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm" style={{ minWidth: showMonth ? 1000 : 900 }}>
-          <thead>
-            <tr style={{ background: "#F0F5F2" }}>
-              {headers.map((h) => (
-                <th key={h} className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#5B6E67" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((e) => {
-              const weekend = e.data ? isWeekend(e.data) : false;
-              const entryMonth = e.data ? new Date(e.data + "T00:00:00").getMonth() : null;
-              const orderStatus = e.statusZlecenia || "Wykonane";
-              const isCancelled = orderStatus === "Odwołane";
-              const isPlanned = orderStatus === "Zaplanowane";
-              const isOverdue = isPlanned && e.data && e.data < todayStr();
-              return (
-                <React.Fragment key={e.id}>
-                <tr
-                  className="border-t transition hover:bg-gray-50"
-                  style={{
-                    borderColor: LINE_COLOR,
-                    background: isCancelled ? "#FAFAFA" : isPlanned ? "#F7FAFD" : weekend ? "#FAF8F3" : "transparent",
-                    opacity: isCancelled ? 0.55 : 1,
-                  }}
+    <div className="rounded-xl overflow-hidden divide-y" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+      {entries.map((e) => {
+        const entryMonth = e.data ? new Date(e.data + "T00:00:00").getMonth() : null;
+        const orderStatus = e.statusZlecenia || "Wykonane";
+        const isCancelled = orderStatus === "Odwołane";
+        const isPlanned = orderStatus === "Zaplanowane";
+        const isOverdue = isPlanned && e.data && e.data < todayStr();
+        const isZakup = !e.klient && (e.opisWydatkow || e.wydatki);
+        const title = e.klient || e.opisWydatkow || "—";
+        const amount = isZakup ? Number(e.wydatki) || 0 : Number(e.zarobki) || 0;
+        const secondaryParts = isZakup
+          ? [e.kategoria ? `Kategoria: ${e.kategoria}` : null]
+          : [e.adres, e.opisUslugi];
+        const secondary = secondaryParts.filter(Boolean).join(" · ") || "—";
+        const statusBadge = ORDER_STATUS_BADGE[isOverdue ? "Zaległe" : orderStatus] || ORDER_STATUS_BADGE["Wykonane"];
+        return (
+          <div key={e.id} className="px-4 py-3" style={{ borderColor: LINE_COLOR, opacity: isCancelled ? 0.6 : 1 }}>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="w-20 flex-shrink-0">
+                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isZakup ? CORAL : PRIMARY_DARK }}>
+                  {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
+                </div>
+                <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
+                  {e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
+                </div>
+              </div>
+              <button onClick={() => onEdit(e)} className="flex-1 min-w-[160px] text-left hover:opacity-80 transition">
+                <div className="text-sm font-medium truncate" style={{ color: isZakup ? CORAL : INK }}>{title}</div>
+                <div className="text-xs truncate" style={{ color: "#5B6E67" }}>{secondary}</div>
+              </button>
+              <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: isZakup ? CORAL : PRIMARY_DARK, minWidth: 90, textAlign: "right" }}>
+                {isZakup ? "-" : ""}{fmtPLN(amount)}
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: statusBadge.bg, color: statusBadge.color }}>
+                <statusBadge.Icon size={10} /> {isOverdue ? "Zaległe" : orderStatus}
+              </span>
+              {e.status && (
+                <span className={`text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 ${STATUS_STYLES[e.status] || ""}`}>{e.status}</span>
+              )}
+              {showMonth && entryMonth !== null && (
+                <button
+                  onClick={() => onJumpToMonth(entryMonth)}
+                  className="text-[11px] px-2 py-0.5 rounded-full font-medium transition hover:opacity-80 flex-shrink-0"
+                  style={{ background: MINT, color: PRIMARY_DARK }}
                 >
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <div style={{ fontFamily: MONO_FONT, fontSize: "0.82rem" }}>{e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}</div>
-                    <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
-                      {e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
-                    </div>
-                  </td>
-                  {showMonth && (
-                    <td className="px-3 py-2.5">
-                      {entryMonth !== null ? (
-                        <button
-                          onClick={() => onJumpToMonth(entryMonth)}
-                          className="text-[11px] px-2 py-0.5 rounded-full font-medium transition hover:opacity-80"
-                          style={{ background: MINT, color: PRIMARY_DARK }}
-                        >
-                          {MONTH_NAMES[entryMonth]}
-                        </button>
-                      ) : "—"}
-                    </td>
-                  )}
-                  <td className="px-3 py-2.5">{e.klient || <span style={{ color: "#C7D6CF" }}>—</span>}</td>
-                  <td className="px-3 py-2.5" style={{ color: "#5B6E67" }}>{e.adres || "—"}</td>
-                  <td className="px-3 py-2.5" style={{ color: "#5B6E67" }}>{e.opisUslugi || e.opisWydatkow || "—"}</td>
-                  <td className="px-3 py-2.5" style={{ fontFamily: MONO_FONT }}>{e.godziny ? fmtNum(e.godziny, " h") : "—"}</td>
-                  <td className="px-3 py-2.5 font-semibold" style={{ fontFamily: MONO_FONT, color: e.zarobki ? PRIMARY_DARK : "#C7D6CF" }}>
-                    {e.zarobki ? fmtPLN(e.zarobki) : "—"}
-                  </td>
-                  <td className="px-3 py-2.5" style={{ fontFamily: MONO_FONT, color: e.wydatki ? CORAL : "#C7D6CF" }}>
-                    {e.wydatki ? fmtPLN(e.wydatki) : "—"}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {e.kategoria ? (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full" style={{ background: `${CATEGORY_COLORS[e.kategoria]}1A`, color: CATEGORY_COLORS[e.kategoria] }}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: CATEGORY_COLORS[e.kategoria] }} />
-                        {e.kategoria}
-                      </span>
-                    ) : "—"}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${ORDER_STATUS_STYLES[isOverdue ? "Zaległe" : orderStatus] || ""}`}>
-                      {isOverdue ? <AlertTriangle size={11} /> : <OrderStatusIcon status={orderStatus} />}
-                      {isOverdue ? "Zaległe" : orderStatus}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {e.status ? (
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_STYLES[e.status] || ""}`}>{e.status}</span>
-                    ) : "—"}
-                  </td>
-                </tr>
-                <tr key={`${e.id}-actions`} className="border-t" style={{ borderColor: LINE_COLOR, background: isCancelled ? "#FAFAFA" : isPlanned ? "#F7FAFD" : weekend ? "#FAF8F3" : "transparent", opacity: isCancelled ? 0.55 : 1 }}>
-                  <td colSpan={headers.length} className="px-3 pb-2.5 pt-0">
-                    <div className="flex items-center gap-1">
-                      {isPlanned && (
-                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
-                          <CheckCircle2 size={14} color={PRIMARY} />
-                        </button>
-                      )}
-                      {!isCancelled && (
-                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
-                          <Move size={14} color="#2A5C8A" />
-                        </button>
-                      )}
-                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
-                      </button>
-                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
-                        <Trash2 size={14} color={CORAL} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  {MONTH_NAMES[entryMonth]}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1 mt-2">
+              {isPlanned && (
+                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md hover:bg-emerald-50 transition" title="Oznacz jako wykonane">
+                  <CheckCircle2 size={15} color={PRIMARY} />
+                </button>
+              )}
+              {!isZakup && !isCancelled && (
+                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Odwołaj zlecenie">
+                  <Ban size={15} color="#8CA098" />
+                </button>
+              )}
+              {!isCancelled && (
+                <button onClick={() => onMove(e)} className="p-1.5 rounded-md hover:bg-sky-50 transition" title="Przenieś termin">
+                  <Move size={14} color="#2A5C8A" />
+                </button>
+              )}
+              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md hover:bg-gray-100 transition" title="Edytuj">
+                <Pencil size={14} color="#5B6E67" />
+              </button>
+              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md hover:bg-red-50 transition" title="Usuń">
+                <Trash2 size={14} color={CORAL} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
