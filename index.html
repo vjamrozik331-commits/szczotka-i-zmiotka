@@ -2178,18 +2178,17 @@ function MiniMonthCalendar({ year, month, entries, onDayClick, tone = "planned" 
           return (
             <button
               key={idx}
-              onClick={() => hasEntries && onDayClick(cell.dateStr)}
-              disabled={!hasEntries}
-              className="aspect-square rounded-md flex items-center justify-center text-[11px] transition"
+              onClick={() => onDayClick(cell.dateStr)}
+              className="aspect-square rounded-md flex items-center justify-center text-[11px] transition hover:opacity-70"
               style={{
                 background: isOverdue ? "#FDECEA" : doneStyle ? "rgba(31,110,92,0.12)" : hasEntries ? "#EAF1F8" : "transparent",
                 border: isOverdue ? "1px dashed #E0665A" : doneStyle ? "1px solid rgba(31,110,92,0.4)" : hasEntries ? "1px dashed #2A5C8A" : isToday ? "1px solid #2A5C8A" : "1px solid transparent",
                 color: isOverdue ? CORAL : doneStyle ? PRIMARY_DARK : hasEntries ? "#2A5C8A" : isToday ? "#2A5C8A" : "#B0B8B5",
                 fontFamily: MONO_FONT,
                 fontWeight: hasEntries || isToday ? 600 : 400,
-                cursor: hasEntries ? "pointer" : "default",
+                cursor: "pointer",
               }}
-              title={hasEntries ? `${cell.entries.length} ${tone === "done" ? "wykonane" : "zaplanowane"}` : ""}
+              title={hasEntries ? `${cell.entries.length} ${tone === "done" ? "wykonane" : "zaplanowane"}` : "Kliknij, żeby zaplanować zlecenie"}
             >
               {cell.day}
             </button>
