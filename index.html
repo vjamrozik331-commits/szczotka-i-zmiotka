@@ -217,6 +217,34 @@ function defaultOrderStatus(dateStr) {
 
 // Wspólna logika liczenia faktur VAT do wystawienia — używana zarówno przez zakładkę
 // "Faktury", jak i sekcję w "Podsumowanie", żeby liczby zawsze były ze sobą spójne.
+// Wspólna logika grupowania kolejnych dni wolnych o tym samym opisie w jeden zakres
+// "od-do" — używana zarówno przez listę dni wolnych, jak i przez pigułki w widoku
+// miesiąca oraz popup kafelka "Dni wolne", żeby zawsze wyglądały tak samo.
+function groupConsecutiveFreeDays(freeDays, year) {
+  const sorted = (freeDays || [])
+    .filter((d) => d.date && (!year || d.date.startsWith(String(year))))
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const result = [];
+  let current = null;
+  sorted.forEach((fd) => {
+    const opis = fd.opis || "";
+    if (current) {
+      const prevDate = new Date(current.endDate + "T00:00:00");
+      const thisDate = new Date(fd.date + "T00:00:00");
+      const diffDays = Math.round((thisDate - prevDate) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1 && opis === current.opis) {
+        current.endDate = fd.date;
+        current.ids.push(fd.id);
+        return;
+      }
+    }
+    current = { ids: [fd.id], startDate: fd.date, endDate: fd.date, opis };
+    result.push(current);
+  });
+  return result;
+}
+
 function computeInvoicesByYear(entries, year) {
   const filtered = (entries || []).filter(
     (e) => e.fakturaVat && e.klient && e.klient.trim() && e.data && e.data.startsWith(String(year)) && e.statusZlecenia !== "Odwołane"
@@ -1149,7 +1177,9 @@ function App() {
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
             onMove={openMove}
-            onRemoveFreeDay={(id) => removeFreeDayGroup([id])}
+            onRemoveFreeDay={(ids) => removeFreeDayGroup(ids)}
+            onEditFreeDay={openEditFreeDayGroup}
+            onMoveFreeDay={openMoveFreeDayGroup}
             onGoUpcoming={() => setView("upcoming")}
           />
         )}
@@ -1613,7 +1643,7 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onGoUpcoming }) {
+function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onEditFreeDay, onMoveFreeDay, onGoUpcoming }) {
   const [detail, setDetail] = useState(null); // "zarobki" | "wydatki" | "zaplanowane" | "wolne" | null
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
 
@@ -1648,14 +1678,20 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
             <Umbrella size={13} /> Dni wolne w tym miesiącu
           </h3>
           <div className="flex flex-wrap gap-2">
-            {freeDays.sort((a, b) => a.date.localeCompare(b.date)).map((fd) => (
-              <span key={fd.id} className="inline-flex items-center gap-1.5 text-xs pl-2.5 pr-1.5 py-1 rounded-full" style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
-                {fd.date.slice(8, 10)}.{fd.date.slice(5, 7)}{fd.opis ? ` — ${fd.opis}` : ""}
-                <button onClick={() => onRemoveFreeDay(fd.id)} className="p-0.5 rounded-full hover:bg-black/5" title="Usuń dzień wolny">
-                  <X size={11} />
-                </button>
-              </span>
-            ))}
+            {groupConsecutiveFreeDays(freeDays).map((g) => {
+              const isRange = g.startDate !== g.endDate;
+              const label = isRange
+                ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}–${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
+                : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}`;
+              return (
+                <span key={g.ids[0]} className="inline-flex items-center gap-1.5 text-xs pl-2.5 pr-1.5 py-1 rounded-full" style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
+                  {label}{g.opis ? ` — ${g.opis}` : ""}
+                  <button onClick={() => onRemoveFreeDay(g.ids)} className="p-0.5 rounded-full hover:bg-black/5" title="Usuń dzień wolny">
+                    <X size={11} />
+                  </button>
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1670,6 +1706,9 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
           onSetStatus={onSetStatus}
           onMarkDone={onMarkDone}
           onMove={onMove}
+          onEditFreeDay={(g) => { onEditFreeDay(g); setDetail(null); }}
+          onMoveFreeDay={(g) => { onMoveFreeDay(g); setDetail(null); }}
+          onRemoveFreeDay={onRemoveFreeDay}
           onClose={() => setDetail(null)}
         />
       )}
@@ -3089,11 +3128,12 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
   );
 }
 
-function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onClose }) {
+function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onEditFreeDay, onMoveFreeDay, onRemoveFreeDay, onClose }) {
   const cfg = DETAIL_CONFIG[type];
   const Icon = cfg.icon;
   const isFreeDays = type === "wolne";
-  const items = isFreeDays ? freeDays.slice().sort((a, b) => a.date.localeCompare(b.date)) : entries;
+  const freeDayGroups = isFreeDays ? groupConsecutiveFreeDays(freeDays) : [];
+  const items = isFreeDays ? freeDayGroups : entries;
   const amountKey = type === "wydatki" ? "wydatki" : "zarobki";
   const total = isFreeDays ? null : items.reduce((s, e) => s + (Number(e[amountKey]) || 0), 0);
 
@@ -3119,15 +3159,37 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
             <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>{cfg.empty}</div>
           ) : isFreeDays ? (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-              {items.map((fd) => (
-                <div key={fd.id} className="px-5 py-3 flex items-center gap-3">
-                  <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: 56 }}>
-                    {fd.date.slice(8, 10)}.{fd.date.slice(5, 7)}
+              {items.map((g) => {
+                const isRange = g.startDate !== g.endDate;
+                return (
+                  <div key={g.ids[0]} className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: isRange ? 130 : 56 }}>
+                        {isRange
+                          ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}–${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
+                          : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} · ${weekdayName(g.startDate).slice(0, 3)}`}
+                      </div>
+                      <div className="text-sm flex-1 truncate" style={{ color: INK }}>{g.opis || "—"}</div>
+                      {isRange && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
+                          {g.ids.length} dni
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-2">
+                      <button onClick={() => onMoveFreeDay(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
+                        <Move size={14} color="#2A5C8A" />
+                      </button>
+                      <button onClick={() => onEditFreeDay(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onRemoveFreeDay(g.ids)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-sm capitalize" style={{ color: "#5B6E67" }}>{weekdayName(fd.date)}</div>
-                  {fd.opis && <div className="text-sm ml-auto" style={{ color: INK }}>{fd.opis}</div>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
@@ -3375,30 +3437,7 @@ function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImport
 }
 
 function FreeDaysListModal({ freeDays, year, onAddNew, onEdit, onMove, onRemove, onClose }) {
-  const groups = useMemo(() => {
-    const sorted = freeDays
-      .filter((d) => d.date && d.date.startsWith(String(year)))
-      .slice()
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const result = [];
-    let current = null;
-    sorted.forEach((fd) => {
-      const opis = fd.opis || "";
-      if (current) {
-        const prevDate = new Date(current.endDate + "T00:00:00");
-        const thisDate = new Date(fd.date + "T00:00:00");
-        const diffDays = Math.round((thisDate - prevDate) / (1000 * 60 * 60 * 24));
-        if (diffDays === 1 && opis === current.opis) {
-          current.endDate = fd.date;
-          current.ids.push(fd.id);
-          return;
-        }
-      }
-      current = { ids: [fd.id], startDate: fd.date, endDate: fd.date, opis };
-      result.push(current);
-    });
-    return result;
-  }, [freeDays, year]);
+  const groups = useMemo(() => groupConsecutiveFreeDays(freeDays, year), [freeDays, year]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
