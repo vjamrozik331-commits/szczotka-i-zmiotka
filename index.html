@@ -1684,12 +1684,23 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
                 ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}–${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
                 : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}`;
               return (
-                <span key={g.ids[0]} className="inline-flex items-center gap-1.5 text-xs pl-2.5 pr-1.5 py-1 rounded-full" style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
-                  {label}{g.opis ? ` — ${g.opis}` : ""}
-                  <button onClick={() => onRemoveFreeDay(g.ids)} className="p-0.5 rounded-full hover:bg-black/5" title="Usuń dzień wolny">
-                    <X size={11} />
+                <div key={g.ids[0]} className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full flex-wrap" style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
+                  <span className="text-xs">{label}{g.opis ? ` — ${g.opis}` : ""}</span>
+                  {isRange && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#F5E4BC", color: "#633806" }}>
+                      {g.ids.length} dni
+                    </span>
+                  )}
+                  <button onClick={() => onMoveFreeDay(g)} className="p-1 rounded-full hover:bg-black/5" title="Przenieś termin">
+                    <Move size={12} color="#2A5C8A" />
                   </button>
-                </span>
+                  <button onClick={() => onEditFreeDay(g)} className="p-1 rounded-full hover:bg-black/5" title="Edytuj">
+                    <Pencil size={12} color="#5B6E67" />
+                  </button>
+                  <button onClick={() => onRemoveFreeDay(g.ids)} className="p-1 rounded-full hover:bg-black/5" title="Usuń dzień wolny">
+                    <Trash2 size={12} color={CORAL} />
+                  </button>
+                </div>
               );
             })}
           </div>
