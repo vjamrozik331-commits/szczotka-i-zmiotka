@@ -1673,33 +1673,41 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
       {!isYearSearch && <CalendarStrip cells={calendarCells} onDayClick={(dateStr) => setDayDetail(dateStr)} />}
 
       {!isYearSearch && freeDays.length > 0 && (
-        <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
-          <h3 className="text-xs font-semibold uppercase tracking-wide mb-2.5 flex items-center gap-1.5" style={{ color: "#8A6A1F" }}>
-            <Umbrella size={13} /> Dni wolne w tym miesiącu
-          </h3>
-          <div className="flex flex-wrap gap-2">
+        <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+          <div className="px-4 py-3 border-b flex items-center gap-1.5" style={{ borderColor: LINE_COLOR }}>
+            <Umbrella size={13} color="#8A6A1F" />
+            <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#8A6A1F" }}>Dni wolne w tym miesiącu</h3>
+          </div>
+          <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
             {groupConsecutiveFreeDays(freeDays).map((g) => {
               const isRange = g.startDate !== g.endDate;
               const label = isRange
                 ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}–${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
-                : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}`;
+                : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} · ${weekdayName(g.startDate).slice(0, 3)}`;
               return (
-                <div key={g.ids[0]} className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full flex-wrap" style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
-                  <span className="text-xs">{label}{g.opis ? ` — ${g.opis}` : ""}</span>
-                  {isRange && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#F5E4BC", color: "#633806" }}>
-                      {g.ids.length} dni
-                    </span>
-                  )}
-                  <button onClick={() => onMoveFreeDay(g)} className="p-1 rounded-full hover:bg-black/5" title="Przenieś termin">
-                    <Move size={12} color="#2A5C8A" />
-                  </button>
-                  <button onClick={() => onEditFreeDay(g)} className="p-1 rounded-full hover:bg-black/5" title="Edytuj">
-                    <Pencil size={12} color="#5B6E67" />
-                  </button>
-                  <button onClick={() => onRemoveFreeDay(g.ids)} className="p-1 rounded-full hover:bg-black/5" title="Usuń dzień wolny">
-                    <Trash2 size={12} color={CORAL} />
-                  </button>
+                <div key={g.ids[0]} className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: isRange ? 130 : 56 }}>
+                      {label}
+                    </div>
+                    <div className="text-sm flex-1 truncate" style={{ color: INK }}>{g.opis || "—"}</div>
+                    {isRange && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
+                        {g.ids.length} dni
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-2 pt-2" style={{ borderTop: `1px solid ${LINE_COLOR}` }}>
+                    <button onClick={() => onMoveFreeDay(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
+                      <Move size={14} color="#2A5C8A" />
+                    </button>
+                    <button onClick={() => onEditFreeDay(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                      <Pencil size={14} color="#5B6E67" />
+                    </button>
+                    <button onClick={() => onRemoveFreeDay(g.ids)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
+                      <Trash2 size={14} color={CORAL} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -3187,7 +3195,7 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 mt-2">
+                    <div className="flex items-center gap-1 mt-2 pt-2" style={{ borderTop: `1px solid ${LINE_COLOR}` }}>
                       <button onClick={() => onMoveFreeDay(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
                         <Move size={14} color="#2A5C8A" />
                       </button>
