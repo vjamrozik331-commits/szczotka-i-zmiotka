@@ -1681,16 +1681,20 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
           <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
             {groupConsecutiveFreeDays(freeDays).map((g) => {
               const isRange = g.startDate !== g.endDate;
-              const label = isRange
-                ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}–${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
-                : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} · ${weekdayName(g.startDate).slice(0, 3)}`;
               return (
                 <div key={g.ids[0]} className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: isRange ? 130 : 56 }}>
-                      {label}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="w-20 flex-shrink-0">
+                      <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F" }}>
+                        {isRange
+                          ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}`
+                          : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}`}
+                      </div>
+                      <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
+                        {isRange ? `– ${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}` : weekdayName(g.startDate)}
+                      </div>
                     </div>
-                    <div className="text-sm flex-1 truncate" style={{ color: INK }}>{g.opis || "—"}</div>
+                    <div className="flex-1 min-w-[120px] text-sm font-medium truncate" style={{ color: INK }}>{g.opis || "—"}</div>
                     {isRange && (
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
                         {g.ids.length} dni
@@ -3182,13 +3186,16 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                 const isRange = g.startDate !== g.endDate;
                 return (
                   <div key={g.ids[0]} className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: isRange ? 130 : 56 }}>
-                        {isRange
-                          ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)}–${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
-                          : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} · ${weekdayName(g.startDate).slice(0, 3)}`}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="w-20 flex-shrink-0">
+                        <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F" }}>
+                          {g.startDate.slice(8, 10)}.{g.startDate.slice(5, 7)}
+                        </div>
+                        <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
+                          {isRange ? `– ${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}` : weekdayName(g.startDate)}
+                        </div>
                       </div>
-                      <div className="text-sm flex-1 truncate" style={{ color: INK }}>{g.opis || "—"}</div>
+                      <div className="flex-1 min-w-[120px] text-sm font-medium truncate" style={{ color: INK }}>{g.opis || "—"}</div>
                       {isRange && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
                           {g.ids.length} dni
