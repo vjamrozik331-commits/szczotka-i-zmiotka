@@ -139,15 +139,17 @@ const MONTH_NAMES = ["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Li
 const WEEKDAY_LETTERS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
 const DEFAULT_YEAR = new Date().getFullYear();
 
-const CATEGORIES = ["Chemia i materiały", "Sprzęt", "Paliwo", "Marketing", "Oszczędności", "Inne"];
+const CATEGORIES = ["Chemia i materiały", "Sprzęt", "Paliwo", "Marketing", "Oszczędności", "Osobiste", "Inne"];
 const CATEGORY_COLORS = {
   "Chemia i materiały": "#2A9D8F",
   "Sprzęt": "#E9C46A",
   "Paliwo": "#E76F51",
   "Marketing": "#8AB17D",
   "Oszczędności": "#4A7C9E",
+  "Osobiste": "#7F77DD",
   "Inne": "#6B7280",
 };
+const PRIVATE_PURPLE = "#534AB7";
 const CLIENT_TYPES = ["Osoba prywatna", "Firma"];
 const STATUSES = ["Zapłacono", "Oczekuje", "Częściowo"];
 const STATUS_STYLES = {
@@ -341,7 +343,7 @@ function deriveClientsFromEntries(entries) {
 const emptyForm = {
   data: "", godzinaStart: "", klient: "", adres: "", opisUslugi: "usługi sprzątające", godziny: "",
   zarobki: "", wydatki: "", opisWydatkow: "", kategoria: "", typKlienta: "", status: "", uwagi: "",
-  statusZlecenia: "", saveClientToList: true, fakturaVat: false,
+  statusZlecenia: "", saveClientToList: true, fakturaVat: false, typWpisu: "",
 };
 
 function App() {
@@ -373,7 +375,7 @@ function App() {
   const [clientSearch, setClientSearch] = useState("");
   const [showBackupsPanel, setShowBackupsPanel] = useState(false);
   const [confirmDoneEntry, setConfirmDoneEntry] = useState(null);
-  const [doneForm, setDoneForm] = useState({ zarobki: "", godziny: "" });
+  const [doneForm, setDoneForm] = useState({ zarobki: "", godziny: "", wydatki: "" });
   const [backupsList, setBackupsList] = useState([]);
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [backupsError, setBackupsError] = useState(null);
@@ -807,6 +809,14 @@ function App() {
     setShowForm(true);
   }, [activeTab, year]);
 
+  const openAddPrivateForm = useCallback((dateStr) => {
+    setEditingId(null);
+    setFormType("prywatne");
+    const d = dateStr || `${year}-${String(activeTab + 1).padStart(2, "0")}-01`;
+    setForm({ ...emptyForm, data: d, opisUslugi: "", statusZlecenia: defaultOrderStatus(d), typWpisu: "prywatne" });
+    setShowForm(true);
+  }, [activeTab, year]);
+
   const openAddOrderForClient = useCallback((client) => {
     setEditingId(null);
     setFormType("klient");
@@ -824,7 +834,8 @@ function App() {
     const hasKlient = !!(entry.klient && entry.klient.trim());
     const hasZakup = (entry.wydatki !== null && entry.wydatki !== undefined && entry.wydatki !== "") || !!(entry.opisWydatkow && entry.opisWydatkow.trim());
     let detectedType = "full";
-    if (hasKlient && !hasZakup) detectedType = "klient";
+    if (entry.typWpisu === "prywatne") detectedType = "prywatne";
+    else if (hasKlient && !hasZakup) detectedType = "klient";
     else if (hasZakup && !hasKlient) detectedType = "zakup";
     else if (!hasKlient && !hasZakup) detectedType = "klient";
     setFormType(detectedType);
@@ -834,7 +845,7 @@ function App() {
       wydatki: entry.wydatki ?? "", opisWydatkow: entry.opisWydatkow || "", kategoria: entry.kategoria || "",
       typKlienta: entry.typKlienta || "", status: entry.status || "", uwagi: entry.uwagi || "",
       statusZlecenia: entry.statusZlecenia || defaultOrderStatus(entry.data),
-      fakturaVat: !!entry.fakturaVat,
+      fakturaVat: !!entry.fakturaVat, typWpisu: entry.typWpisu || "",
     });
     setShowForm(true);
   }, []);
@@ -868,14 +879,18 @@ function App() {
       opisWydatkow: form.opisWydatkow.trim(), kategoria: form.kategoria, typKlienta: form.typKlienta,
       status: form.status, uwagi: form.uwagi.trim(),
       statusZlecenia: form.statusZlecenia || defaultOrderStatus(form.data),
-      fakturaVat: !!form.fakturaVat,
+      fakturaVat: !!form.fakturaVat, typWpisu: form.typWpisu || "",
     };
     if (formType === "klient") {
-      payload.wydatki = null; payload.opisWydatkow = ""; payload.kategoria = "";
+      payload.wydatki = null; payload.opisWydatkow = ""; payload.kategoria = ""; payload.typWpisu = "";
     } else if (formType === "zakup") {
       payload.klient = ""; payload.adres = ""; payload.opisUslugi = ""; payload.godziny = null;
       payload.godzinaStart = ""; payload.zarobki = null; payload.typKlienta = ""; payload.status = ""; payload.statusZlecenia = "Wykonane";
-      payload.fakturaVat = false;
+      payload.fakturaVat = false; payload.typWpisu = "";
+    } else if (formType === "prywatne") {
+      payload.klient = ""; payload.opisUslugi = ""; payload.zarobki = null; payload.typKlienta = "";
+      payload.status = ""; payload.fakturaVat = false; payload.typWpisu = "prywatne";
+      payload.kategoria = "Osobiste";
     }
     return payload;
   }
@@ -904,7 +919,7 @@ function App() {
   function saveEntry() {
     if (!form.data) return;
     const payload = buildPayload();
-    const freeDayHit = (formType === "klient" || formType === "full") ? freeDays.find((d) => d.date === payload.data) : null;
+    const freeDayHit = (formType === "klient" || formType === "full" || formType === "prywatne") ? freeDays.find((d) => d.date === payload.data) : null;
     if (freeDayHit) {
       setConflictInfo({ payload, type: "freeday", freeDay: freeDayHit });
       return;
@@ -952,17 +967,19 @@ function App() {
 
   function openMarkDone(entry) {
     setConfirmDoneEntry(entry);
-    setDoneForm({ zarobki: entry.zarobki ?? "", godziny: entry.godziny ?? "" });
+    setDoneForm({ zarobki: entry.zarobki ?? "", godziny: entry.godziny ?? "", wydatki: entry.wydatki ?? "" });
   }
 
   function confirmMarkDone() {
     if (!confirmDoneEntry) return;
+    const isPrivate = confirmDoneEntry.typWpisu === "prywatne";
     const next = entries.map((e) =>
       e.id === confirmDoneEntry.id
         ? {
             ...e,
             statusZlecenia: "Wykonane",
-            zarobki: doneForm.zarobki === "" ? e.zarobki : Number(doneForm.zarobki),
+            zarobki: isPrivate ? e.zarobki : (doneForm.zarobki === "" ? e.zarobki : Number(doneForm.zarobki)),
+            wydatki: isPrivate ? (doneForm.wydatki === "" ? e.wydatki : Number(doneForm.wydatki)) : e.wydatki,
             godziny: doneForm.godziny === "" ? e.godziny : Number(doneForm.godziny),
           }
         : e
@@ -1146,6 +1163,7 @@ function App() {
         invoicesCount={invoicesData.totalCount}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
+        onAddPrivate={() => openAddPrivateForm()}
         onAddFreeDay={() => setShowFreeDaysList(true)}
         onGoUpcoming={() => setView("upcoming")}
         onGoCompleted={() => setView("wykonane")}
@@ -1513,7 +1531,7 @@ function TabBar({ activeTab, view, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, onAddClient, onAddPurchase, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
+function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, onAddClient, onAddPurchase, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
       <div className="flex gap-2 flex-wrap">
@@ -1530,6 +1548,13 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
           style={{ background: CORAL }}
         >
           <Receipt size={15} /> Zakupy
+        </button>
+        <button
+          onClick={onAddPrivate}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border"
+          style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, borderColor: "#CECBF6" }}
+        >
+          <Clock size={15} /> Termin prywatny
         </button>
         <button
           onClick={onAddFreeDay}
@@ -1801,6 +1826,7 @@ function CalendarStrip({ cells, onDayClick }) {
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "rgba(31,110,92,0.55)" }} /> wykonane</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm border" style={{ borderColor: "#2A5C8A", borderStyle: "dashed", background: "#EAF1F8" }} /> zaplanowane</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: CORAL }} /> wydatek</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: PRIVATE_PURPLE }} /> prywatne</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#FDF6E9", border: "1px solid #EED9A8" }} /> wolne</span>
       </div>
       <div className="grid grid-cols-7 gap-1.5 mb-1.5">
@@ -1814,7 +1840,8 @@ function CalendarStrip({ cells, onDayClick }) {
           const activeEntries = cell.entries.filter((e) => e.statusZlecenia !== "Odwołane");
           const doneEntries = activeEntries.filter((e) => e.klient && isRealized(e));
           const plannedEntries = activeEntries.filter((e) => e.statusZlecenia === "Zaplanowane");
-          const hasExpense = activeEntries.some((e) => Number(e.wydatki) > 0 && !e.klient);
+          const hasExpense = activeEntries.some((e) => Number(e.wydatki) > 0 && !e.klient && e.typWpisu !== "prywatne");
+          const hasPrivate = activeEntries.some((e) => e.typWpisu === "prywatne");
           const allCancelled = cell.entries.length > 0 && cell.entries.every((e) => e.statusZlecenia === "Odwołane");
           const dayZarobki = doneEntries.reduce((s, e) => s + (Number(e.zarobki) || 0), 0);
           const intensity = Math.min(1, dayZarobki / 400);
@@ -1840,7 +1867,10 @@ function CalendarStrip({ cells, onDayClick }) {
               title={cell.freeDay ? `Wolne${cell.freeDay.opis ? ": " + cell.freeDay.opis : ""}` : cell.entries.length ? `${cell.entries.length} wpis(ów)` : "Dodaj wpis"}
             >
               <span style={{ fontFamily: MONO_FONT, fontWeight: 500, textDecoration: allCancelled ? "line-through" : "none" }}>{cell.day}</span>
-              {hasExpense && <span className="absolute bottom-1 w-1 h-1 rounded-full" style={{ background: CORAL }} />}
+              <span className="absolute bottom-1 flex items-center gap-0.5">
+                {hasExpense && <span className="w-1 h-1 rounded-full" style={{ background: CORAL }} />}
+                {hasPrivate && <span className="w-1 h-1 rounded-full" style={{ background: PRIVATE_PURPLE }} />}
+              </span>
               {isFree && <Umbrella size={9} className="absolute bottom-1" />}
             </button>
           );
@@ -1866,11 +1896,15 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
         const isCancelled = orderStatus === "Odwołane";
         const isPlanned = orderStatus === "Zaplanowane";
         const isOverdue = isPlanned && e.data && e.data < todayStr();
-        const isZakup = !e.klient && (e.opisWydatkow || e.wydatki);
+        const isPrivate = e.typWpisu === "prywatne";
+        const isZakup = !isPrivate && !e.klient && (e.opisWydatkow || e.wydatki);
         const title = e.klient || e.opisWydatkow || "—";
-        const amount = isZakup ? Number(e.wydatki) || 0 : Number(e.zarobki) || 0;
+        const amount = isZakup ? Number(e.wydatki) || 0 : isPrivate ? Number(e.wydatki) || 0 : Number(e.zarobki) || 0;
+        const accentClr = isZakup ? CORAL : isPrivate ? PRIVATE_PURPLE : PRIMARY_DARK;
         const secondaryParts = isZakup
           ? [e.kategoria ? `Kategoria: ${e.kategoria}` : null]
+          : isPrivate
+          ? [e.adres, e.godziny ? fmtNum(e.godziny, "h") : null]
           : [e.adres, e.opisUslugi];
         const secondary = secondaryParts.filter(Boolean).join(" · ") || "—";
         const statusBadge = ORDER_STATUS_BADGE[isOverdue ? "Zaległe" : orderStatus] || ORDER_STATUS_BADGE["Wykonane"];
@@ -1878,7 +1912,7 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
           <div key={e.id} className="px-4 py-3" style={{ borderColor: LINE_COLOR, opacity: isCancelled ? 0.6 : 1 }}>
             <div className="flex items-center gap-3 flex-wrap">
               <div className="w-20 flex-shrink-0">
-                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isZakup ? CORAL : PRIMARY_DARK }}>
+                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: accentClr }}>
                   {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
                 </div>
                 <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
@@ -1886,11 +1920,11 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
                 </div>
               </div>
               <button onClick={() => onEdit(e)} className="flex-1 min-w-[160px] text-left hover:opacity-80 transition">
-                <div className="text-sm font-medium truncate" style={{ color: isZakup ? CORAL : INK }}>{title}</div>
+                <div className="text-sm font-medium truncate" style={{ color: isZakup ? CORAL : isPrivate ? PRIVATE_PURPLE : INK }}>{title}</div>
                 <div className="text-xs truncate" style={{ color: "#5B6E67" }}>{secondary}</div>
               </button>
-              <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: isZakup ? CORAL : PRIMARY_DARK, minWidth: 90, textAlign: "right" }}>
-                {isZakup ? "-" : ""}{fmtPLN(amount)}
+              <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: accentClr, minWidth: 90, textAlign: "right" }}>
+                {(isZakup || (isPrivate && amount)) ? "-" : ""}{amount ? fmtPLN(amount) : "—"}
               </div>
               <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: statusBadge.bg, color: statusBadge.color }}>
                 <statusBadge.Icon size={10} /> {isOverdue ? "Zaległe" : orderStatus}
@@ -2272,11 +2306,13 @@ function UpcomingList({ entries, overdue, done, onEdit, onDelete, onSetStatus, o
     <div className="rounded-xl overflow-hidden divide-y" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
       {entries.map((e) => {
         const entryMonth = e.data ? new Date(e.data + "T00:00:00").getMonth() : null;
+        const isPrivate = e.typWpisu === "prywatne";
+        const title = e.klient || e.opisWydatkow || "";
         return (
           <div key={e.id} className="px-4 py-3" style={{ borderColor: LINE_COLOR }}>
             <div className="flex items-center gap-3 flex-wrap">
               <div className="w-20 flex-shrink-0">
-                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: overdue ? CORAL : done ? PRIMARY_DARK : PRIMARY_DARK }}>
+                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: overdue ? CORAL : isPrivate ? PRIVATE_PURPLE : PRIMARY_DARK }}>
                   {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
                 </div>
                 <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
@@ -2284,11 +2320,11 @@ function UpcomingList({ entries, overdue, done, onEdit, onDelete, onSetStatus, o
                 </div>
               </div>
               <div className="flex-1 min-w-[160px]">
-                <div className="text-sm font-medium">{e.klient || <span style={{ color: "#C7D6CF" }}>Bez klienta</span>}</div>
+                <div className="text-sm font-medium" style={{ color: isPrivate ? PRIVATE_PURPLE : INK }}>{title || <span style={{ color: "#C7D6CF" }}>Bez klienta</span>}</div>
                 <div className="text-xs" style={{ color: "#5B6E67" }}>{e.adres || e.opisUslugi || "—"}</div>
               </div>
-              <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: PRIMARY_DARK, minWidth: 90 }}>
-                {e.zarobki ? fmtPLN(e.zarobki) : "—"}
+              <div className="text-sm font-semibold flex-shrink-0" style={{ fontFamily: MONO_FONT, color: isPrivate ? PRIVATE_PURPLE : PRIMARY_DARK, minWidth: 90 }}>
+                {isPrivate ? (e.wydatki ? "-" + fmtPLN(e.wydatki) : "—") : (e.zarobki ? fmtPLN(e.zarobki) : "—")}
               </div>
               <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 ${overdue ? "bg-red-50 text-red-700 border-red-200" : done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ORDER_STATUS_STYLES["Zaplanowane"]}`}>
                 {overdue ? <AlertTriangle size={11} /> : done ? <CheckCircle2 size={11} /> : <OrderStatusIcon status="Zaplanowane" />}
@@ -2835,8 +2871,9 @@ const inputCls = "w-full px-3 py-2 rounded-lg text-sm border bg-white";
 function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onClose, onSave }) {
   const showKlientFields = formType === "klient" || formType === "full";
   const showZakupFields = formType === "zakup" || formType === "full";
-  const titles = { klient: "Zaplanuj zlecenie", zakup: "Nowe zakupy", full: "Edytuj wpis" };
-  const accentColor = formType === "zakup" ? CORAL : PRIMARY;
+  const showPrivateFields = formType === "prywatne";
+  const titles = { klient: "Zaplanuj zlecenie", zakup: "Nowe zakupy", full: "Edytuj wpis", prywatne: "Termin prywatny" };
+  const accentColor = formType === "zakup" ? CORAL : formType === "prywatne" ? PRIVATE_PURPLE : PRIMARY;
   const isKnownClientName = form.klient && knownClients.list.some((c) => c.name === form.klient);
   const [showNewClientInput, setShowNewClientInput] = useState(!!form.klient && !isKnownClientName);
 
@@ -2845,7 +2882,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
       <div className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
         <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b" style={{ background: SURFACE, borderColor: LINE_COLOR }}>
           <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.15rem", fontWeight: 600, color: PRIMARY_DARK }}>
-            {isEditing ? (formType === "full" ? "Edytuj wpis" : formType === "zakup" ? "Edytuj zakup" : "Edytuj zlecenie") : titles[formType]}
+            {isEditing ? (formType === "full" ? "Edytuj wpis" : formType === "zakup" ? "Edytuj zakup" : formType === "prywatne" ? "Edytuj termin prywatny" : "Edytuj zlecenie") : titles[formType]}
           </h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
@@ -2995,6 +3032,56 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
             </>
           )}
 
+          {showPrivateFields && (
+            <>
+              <FormField label="Status">
+                <div className="flex gap-2 w-full">
+                  {ORDER_STATUSES.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => onChange("statusZlecenia", s)}
+                      className="flex-1 px-2 py-2.5 text-xs font-medium rounded-full border transition"
+                      style={{
+                        background: form.statusZlecenia === s ? (s === "Zaplanowane" ? "#2A5C8A" : s === "Odwołane" ? "#8CA098" : PRIMARY) : "transparent",
+                        borderColor: form.statusZlecenia === s ? (s === "Zaplanowane" ? "#2A5C8A" : s === "Odwołane" ? "#8CA098" : PRIMARY) : LINE_COLOR,
+                        color: form.statusZlecenia === s ? "white" : "#5B6E67",
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </FormField>
+
+              <FormField label="Nazwa">
+                <input type="text" autoFocus className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.opisWydatkow} onChange={(e) => onChange("opisWydatkow", e.target.value)} placeholder="np. Fryzjer — Ania" />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Godzina">
+                  <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godzinaStart} onChange={(e) => onChange("godzinaStart", e.target.value)} />
+                </FormField>
+                <FormField label="Czas trwania (h)">
+                  <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 1" />
+                </FormField>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Miejsce">
+                  <input type="text" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.adres} onChange={(e) => onChange("adres", e.target.value)} placeholder="np. ul. Kwiatowa 4" />
+                </FormField>
+                <FormField label="Koszt (zł)">
+                  <input type="number" step="0.01" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.wydatki} onChange={(e) => onChange("wydatki", e.target.value)} />
+                </FormField>
+              </div>
+
+              <FormField label="Notatka">
+                <textarea className={inputCls} style={{ borderColor: LINE_COLOR, minHeight: 50 }} value={form.uwagi} onChange={(e) => onChange("uwagi", e.target.value)} />
+              </FormField>
+            </>
+          )}
+
           {showZakupFields && (
             <>
               {formType === "full" && (
@@ -3044,7 +3131,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
             style={{ background: accentColor }}
           >
-            {isEditing ? "Zapisz zmiany" : formType === "zakup" ? "Dodaj zakup" : "Zaplanuj zlecenie"}
+            {isEditing ? "Zapisz zmiany" : formType === "zakup" ? "Dodaj zakup" : formType === "prywatne" ? "Dodaj termin" : "Zaplanuj zlecenie"}
           </button>
         </div>
       </div>
@@ -3087,19 +3174,21 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {sorted.map((e) => {
-                const isZakup = !e.klient && e.opisWydatkow;
+                const isPrivate = e.typWpisu === "prywatne";
+                const isZakup = !isPrivate && !e.klient && e.opisWydatkow;
                 const isCancelled = e.statusZlecenia === "Odwołane";
                 const isPlanned = e.statusZlecenia === "Zaplanowane";
                 const isOverdue = isPlanned && e.data && e.data < todayStr();
                 const statusLabel = isOverdue ? "Zaległe" : e.statusZlecenia;
                 const badge = !isZakup ? ORDER_STATUS_BADGE[statusLabel] || ORDER_STATUS_BADGE["Wykonane"] : null;
+                const accentClr = isZakup ? CORAL : isPrivate ? PRIVATE_PURPLE : PRIMARY_DARK;
                 return (
                   <div key={e.id} className="flex items-center gap-3 px-5 py-3 flex-wrap">
                     <div style={{ fontFamily: MONO_FONT, fontSize: "0.8rem", color: "#8CA098", minWidth: 44 }}>
                       {e.godzinaStart || "—"}
                     </div>
                     <button onClick={() => onEdit(e)} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
-                      <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
+                      <div className="text-sm font-medium truncate" style={{ color: isPrivate ? PRIVATE_PURPLE : INK }}>{e.klient || e.opisWydatkow || "—"}</div>
                       {(e.adres || e.opisUslugi) && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres || e.opisUslugi}</div>}
                     </button>
                     {badge && (
@@ -3107,8 +3196,8 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
                         <badge.Icon size={9} /> {statusLabel}
                       </span>
                     )}
-                    <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: isZakup ? CORAL : PRIMARY_DARK, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
-                      {fmtPLN(Number(isZakup ? e.wydatki : e.zarobki) || 0)}
+                    <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: accentClr, flexShrink: 0, minWidth: 64, textAlign: "right" }}>
+                      {(() => { const amt = Number(isZakup || isPrivate ? e.wydatki : e.zarobki) || 0; return amt ? fmtPLN(amt) : "—"; })()}
                     </div>
                     <div className="flex items-center gap-0.5 flex-shrink-0 ml-auto">
                       {isPlanned && (
@@ -3235,7 +3324,8 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {items.map((e) => {
                 const isOverdue = (type === "zaplanowane" || type === "zalegle") && e.statusZlecenia === "Zaplanowane" && e.data < todayStr();
-                const isZakup = !e.klient && e.opisWydatkow;
+                const isPrivate = e.typWpisu === "prywatne";
+                const isZakup = !isPrivate && !e.klient && e.opisWydatkow;
                 const isCancelled = e.statusZlecenia === "Odwołane";
                 const isPlanned = e.statusZlecenia === "Zaplanowane";
                 return (
@@ -3246,7 +3336,7 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                       </div>
                       <button onClick={() => { onEdit(e); onClose(); }} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
                         <div className="flex items-center gap-1.5">
-                          <div className="text-sm font-medium truncate">{e.klient || e.opisWydatkow || "—"}</div>
+                          <div className="text-sm font-medium truncate" style={{ color: isPrivate ? PRIVATE_PURPLE : INK }}>{e.klient || e.opisWydatkow || "—"}</div>
                           {isOverdue && (
                             <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
                               <AlertTriangle size={9} /> Zaległe
@@ -3618,30 +3708,45 @@ function FreeDayModal({ form, isEditing, onChange, onClose, onSave }) {
 }
 
 function MarkDoneModal({ entry, form, onChange, onConfirm, onCancel }) {
+  const isPrivate = entry?.typWpisu === "prywatne";
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
       <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
-          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
-            <CheckCircle2 size={17} color={PRIMARY} /> Oznacz jako wykonane
+          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: isPrivate ? PRIVATE_PURPLE : PRIMARY_DARK }}>
+            <CheckCircle2 size={17} color={isPrivate ? PRIVATE_PURPLE : PRIMARY} /> Oznacz jako wykonane
           </h3>
           <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
           <p className="text-sm" style={{ color: "#5B6E67" }}>
-            {entry?.klient ? <>Zlecenie: <strong style={{ color: INK }}>{entry.klient}</strong></> : "Uzupełnij podsumowanie zlecenia."}
+            {isPrivate
+              ? <>Termin: <strong style={{ color: INK }}>{entry?.opisWydatkow || "—"}</strong></>
+              : entry?.klient ? <>Zlecenie: <strong style={{ color: INK }}>{entry.klient}</strong></> : "Uzupełnij podsumowanie zlecenia."}
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Zarobki (zł)">
-              <input
-                type="number" step="0.01" autoFocus
-                className={inputCls} style={{ borderColor: LINE_COLOR }}
-                value={form.zarobki}
-                onChange={(e) => onChange("zarobki", e.target.value)}
-                placeholder="np. 260"
-              />
-            </FormField>
-            <FormField label="Czas pracy (h)">
+            {isPrivate ? (
+              <FormField label="Koszt (zł)">
+                <input
+                  type="number" step="0.01" autoFocus
+                  className={inputCls} style={{ borderColor: LINE_COLOR }}
+                  value={form.wydatki}
+                  onChange={(e) => onChange("wydatki", e.target.value)}
+                  placeholder="np. 80"
+                />
+              </FormField>
+            ) : (
+              <FormField label="Zarobki (zł)">
+                <input
+                  type="number" step="0.01" autoFocus
+                  className={inputCls} style={{ borderColor: LINE_COLOR }}
+                  value={form.zarobki}
+                  onChange={(e) => onChange("zarobki", e.target.value)}
+                  placeholder="np. 260"
+                />
+              </FormField>
+            )}
+            <FormField label={isPrivate ? "Czas trwania (h)" : "Czas pracy (h)"}>
               <input
                 type="number" step="0.5"
                 className={inputCls} style={{ borderColor: LINE_COLOR }}
@@ -3659,7 +3764,7 @@ function MarkDoneModal({ entry, form, onChange, onConfirm, onCancel }) {
           <button
             onClick={onConfirm}
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
-            style={{ background: PRIMARY }}
+            style={{ background: isPrivate ? PRIVATE_PURPLE : PRIMARY }}
           >
             Oznacz jako wykonane
           </button>
