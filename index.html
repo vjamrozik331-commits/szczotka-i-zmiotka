@@ -1676,9 +1676,9 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
   const [showPast, setShowPast] = useState(false);
 
   const today = todayStr();
-  const shouldCollapse = isCurrentMonth && !search.trim() && !showPast;
-  const pastCount = shouldCollapse ? entries.filter((e) => e.data && e.data < today).length : 0;
-  const visibleEntries = shouldCollapse ? entries.filter((e) => !e.data || e.data >= today) : entries;
+  const pastCount = isCurrentMonth ? entries.filter((e) => e.data && e.data < today).length : 0;
+  const isCollapsed = isCurrentMonth && pastCount > 0 && !search.trim() && !showPast;
+  const visibleEntries = isCollapsed ? entries.filter((e) => !e.data || e.data >= today) : entries;
 
   return (
     <div className="space-y-5">
@@ -1825,14 +1825,14 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
         </p>
       )}
 
-      {pastCount > 0 && (
+      {pastCount > 0 && !search.trim() && (
         <button
-          onClick={() => setShowPast(true)}
+          onClick={() => setShowPast((v) => !v)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition hover:bg-gray-50"
           style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#5B6E67" }}
         >
-          <ChevronRight size={15} style={{ transform: "rotate(90deg)" }} />
-          Pokaż {pastCount} {pastCount === 1 ? "miniony dzień" : pastCount < 5 ? "minione dni" : "minionych dni"} tego miesiąca
+          <ChevronRight size={15} style={{ transform: isCollapsed ? "rotate(90deg)" : "rotate(-90deg)" }} />
+          {isCollapsed ? "Pokaż wcześniejsze zlecenia" : "Ukryj wcześniejsze zlecenia"}
         </button>
       )}
 
