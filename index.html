@@ -1179,6 +1179,7 @@ function App() {
           <MonthView
             monthName={MONTH_NAMES[activeTab]}
             year={year}
+            isCurrentMonth={!isYearSearch && year === new Date().getFullYear() && activeTab === new Date().getMonth()}
             summary={monthSummary}
             detailLists={monthDetailLists}
             entries={monthEntries}
@@ -1669,9 +1670,15 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, year, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onEditFreeDay, onMoveFreeDay, onGoUpcoming }) {
+function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onEditFreeDay, onMoveFreeDay, onGoUpcoming }) {
   const [detail, setDetail] = useState(null); // "zarobki" | "wydatki" | "zaplanowane" | "wolne" | null
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
+  const [showPast, setShowPast] = useState(false);
+
+  const today = todayStr();
+  const shouldCollapse = isCurrentMonth && !search.trim() && !showPast;
+  const pastCount = shouldCollapse ? entries.filter((e) => e.data && e.data < today).length : 0;
+  const visibleEntries = shouldCollapse ? entries.filter((e) => !e.data || e.data >= today) : entries;
 
   return (
     <div className="space-y-5">
@@ -1818,7 +1825,18 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
         </p>
       )}
 
-      <EntriesTable entries={entries} onEdit={onEdit} onDelete={onDelete} showMonth={isYearSearch} onJumpToMonth={onJumpToMonth} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} />
+      {pastCount > 0 && (
+        <button
+          onClick={() => setShowPast(true)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition hover:bg-gray-50"
+          style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#5B6E67" }}
+        >
+          <ChevronRight size={15} style={{ transform: "rotate(90deg)" }} />
+          Pokaż {pastCount} {pastCount === 1 ? "miniony dzień" : pastCount < 5 ? "minione dni" : "minionych dni"} tego miesiąca
+        </button>
+      )}
+
+      <EntriesTable entries={visibleEntries} onEdit={onEdit} onDelete={onDelete} showMonth={isYearSearch} onJumpToMonth={onJumpToMonth} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} />
     </div>
   );
 }
@@ -1912,15 +1930,25 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
           : [e.adres, e.opisUslugi];
         const secondary = secondaryParts.filter(Boolean).join(" · ") || "—";
         const statusBadge = ORDER_STATUS_BADGE[isOverdue ? "Zaległe" : orderStatus] || ORDER_STATUS_BADGE["Wykonane"];
+        const isToday = e.data === todayStr();
         return (
-          <div key={e.id} className="px-4 py-3" style={{ borderColor: LINE_COLOR, opacity: isCancelled ? 0.6 : 1 }}>
+          <div
+            key={e.id}
+            className="px-4 py-3"
+            style={{
+              borderColor: LINE_COLOR,
+              opacity: isCancelled ? 0.6 : 1,
+              background: isToday ? "#EAF3DE" : "transparent",
+              borderLeft: isToday ? `3px solid ${PRIMARY}` : "3px solid transparent",
+            }}
+          >
             <div className="flex items-center gap-3 flex-wrap">
               <div className="w-20 flex-shrink-0">
-                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: accentClr }}>
+                <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isToday ? PRIMARY_DARK : accentClr }}>
                   {e.data ? e.data.slice(8, 10) + "." + e.data.slice(5, 7) : "—"}
                 </div>
-                <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
-                  {e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
+                <div className="text-[10px] capitalize" style={{ color: isToday ? PRIMARY_DARK : "#8CA098", fontWeight: isToday ? 600 : 400 }}>
+                  {isToday ? "Dziś" : e.data ? weekdayName(e.data) : ""}{e.godzinaStart ? ` · ${e.godzinaStart}` : ""}
                 </div>
               </div>
               <button onClick={() => onEdit(e)} className="flex-1 min-w-[160px] text-left hover:opacity-80 transition">
