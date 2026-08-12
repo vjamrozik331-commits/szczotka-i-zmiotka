@@ -667,7 +667,8 @@ function App() {
     const zaplanowane = all.filter((e) => e.statusZlecenia === "Zaplanowane").sort(compareEntries);
     const today = todayStr();
     const zalegle = all.filter((e) => e.statusZlecenia === "Zaplanowane" && e.data < today).sort(compareEntries);
-    return { zarobki, wydatki, zaplanowane, zalegle };
+    const prywatne = all.filter((e) => e.typWpisu === "prywatne" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
+    return { zarobki, wydatki, zaplanowane, zalegle, prywatne };
   }, [entries, activeTab, year]);
 
   const knownClients = useMemo(() => {
@@ -1314,7 +1315,7 @@ function App() {
       {conflictInfo && conflictInfo.type === "time" && (
         <ConfirmModal
           title="Kolizja terminów"
-          message={`Ten termin (${fmtTimeRange(conflictInfo.payload.godzinaStart, conflictInfo.payload.godziny)}) nakłada się z wizytą u „${conflictInfo.conflict.klient || "innego klienta"}” (${fmtTimeRange(conflictInfo.conflict.godzinaStart, conflictInfo.conflict.godziny)}) tego samego dnia. Czy mimo to zapisać ten termin?`}
+          message={`Ten termin (${fmtTimeRange(conflictInfo.payload.godzinaStart, conflictInfo.payload.godziny)}) nakłada się z wizytą u „${conflictInfo.conflict.klient || conflictInfo.conflict.opisWydatkow || "innego klienta"}” (${fmtTimeRange(conflictInfo.conflict.godzinaStart, conflictInfo.conflict.godziny)}) tego samego dnia. Czy mimo to zapisać ten termin?`}
           confirmLabel="Zapisz mimo to"
           onConfirm={() => {
             commitPayload(conflictInfo.payload);
@@ -1349,7 +1350,7 @@ function App() {
       {moveConflict && (
         <ConfirmModal
           title="Kolizja terminów"
-          message={`Nowy termin (${fmtTimeRange(moveInfo.newTime, entries.find((e) => e.id === moveInfo.id)?.godziny)}) nakłada się z wizytą u „${moveConflict.conflict.klient || "innego klienta"}” (${fmtTimeRange(moveConflict.conflict.godzinaStart, moveConflict.conflict.godziny)}) tego samego dnia. Czy mimo to przenieść ten termin?`}
+          message={`Nowy termin (${fmtTimeRange(moveInfo.newTime, entries.find((e) => e.id === moveInfo.id)?.godziny)}) nakłada się z wizytą u „${moveConflict.conflict.klient || moveConflict.conflict.opisWydatkow || "innego klienta"}” (${fmtTimeRange(moveConflict.conflict.godzinaStart, moveConflict.conflict.godziny)}) tego samego dnia. Czy mimo to przenieść ten termin?`}
           confirmLabel="Przenieś mimo to"
           onConfirm={() => performMove(true)}
           onCancel={() => setMoveConflict(null)}
@@ -1692,6 +1693,9 @@ function MonthView({ monthName, year, summary, entries, calendarCells, freeDays,
         )}
         {freeDays.length > 0 && (
           <KpiCard icon={Umbrella} label="Dni wolne" value={freeDays.length} accent="#8A6A1F" onClick={() => setDetail("wolne")} />
+        )}
+        {detailLists.prywatne.length > 0 && (
+          <KpiCard icon={Clock} label="Terminy prywatne" value={detailLists.prywatne.length} accent={PRIVATE_PURPLE} onClick={() => setDetail("prywatne")} />
         )}
       </div>
 
@@ -3145,6 +3149,7 @@ const DETAIL_CONFIG = {
   zaplanowane: { title: "Zaplanowane zlecenia", icon: CalendarClock, color: "#2A5C8A", empty: "Brak zaplanowanych zleceń w tym miesiącu." },
   zalegle: { title: "Zaległe zlecenia", icon: AlertTriangle, color: CORAL, empty: "Brak zaległych zleceń w tym miesiącu." },
   wolne: { title: "Dni wolne", icon: Umbrella, color: "#8A6A1F", empty: "Brak dni wolnych w tym miesiącu." },
+  prywatne: { title: "Terminy prywatne", icon: Clock, color: PRIVATE_PURPLE, empty: "Brak terminów prywatnych w tym miesiącu." },
 };
 
 const ORDER_STATUS_BADGE = {
@@ -3252,7 +3257,7 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
   const isFreeDays = type === "wolne";
   const freeDayGroups = isFreeDays ? groupConsecutiveFreeDays(freeDays) : [];
   const items = isFreeDays ? freeDayGroups : entries;
-  const amountKey = type === "wydatki" ? "wydatki" : "zarobki";
+  const amountKey = (type === "wydatki" || type === "prywatne") ? "wydatki" : "zarobki";
   const total = isFreeDays ? null : items.reduce((s, e) => s + (Number(e[amountKey]) || 0), 0);
 
   return (
@@ -3323,7 +3328,7 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {items.map((e) => {
-                const isOverdue = (type === "zaplanowane" || type === "zalegle") && e.statusZlecenia === "Zaplanowane" && e.data < todayStr();
+                const isOverdue = (type === "zaplanowane" || type === "zalegle" || type === "prywatne") && e.statusZlecenia === "Zaplanowane" && e.data < todayStr();
                 const isPrivate = e.typWpisu === "prywatne";
                 const isZakup = !isPrivate && !e.klient && e.opisWydatkow;
                 const isCancelled = e.statusZlecenia === "Odwołane";
