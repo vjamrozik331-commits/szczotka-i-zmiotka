@@ -1712,10 +1712,9 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
       </h2>
 
       <div className="flex gap-3 flex-wrap">
-        <KpiCard icon={Wallet} label="Zarobki (wykonane)" value={fmtPLN(summary.zarobki)} accent={PRIMARY_DARK} onClick={() => setDetail("zarobki")} />
+        <KpiCard icon={Wallet} label="Zlecenia wykonane" value={`${summary.liczbaZlecen} · ${fmtPLN(summary.zarobki)}`} accent={PRIMARY_DARK} onClick={() => setDetail("zarobki")} />
         <KpiCard icon={Receipt} label="Wydatki" value={fmtPLN(summary.wydatki)} accent={CORAL} onClick={() => setDetail("wydatki")} />
         <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(summary.zysk)} accent={summary.zysk >= 0 ? PRIMARY_DARK : CORAL} />
-        <KpiCard icon={Users} label="Liczba zleceń" value={summary.liczbaZlecen} />
         <KpiCard icon={Clock} label="Śr. stawka" value={summary.stawka > 0 ? fmtPLN(summary.stawka) + "/h" : "—"} />
         {summary.zaplanowaneLiczba > 0 && (
           <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={() => setDetail("zaplanowane")} />
@@ -3197,7 +3196,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
 }
 
 const DETAIL_CONFIG = {
-  zarobki: { title: "Zarobki (wykonane)", icon: Wallet, color: PRIMARY_DARK, empty: "Brak zarobków w tym miesiącu." },
+  zarobki: { title: "Zlecenia wykonane", icon: Wallet, color: PRIMARY_DARK, empty: "Brak zarobków w tym miesiącu." },
   wydatki: { title: "Wydatki", icon: Receipt, color: CORAL, empty: "Brak wydatków w tym miesiącu." },
   zaplanowane: { title: "Zaplanowane zlecenia", icon: CalendarClock, color: "#2A5C8A", empty: "Brak zaplanowanych zleceń w tym miesiącu." },
   zalegle: { title: "Zaległe zlecenia", icon: AlertTriangle, color: CORAL, empty: "Brak zaległych zleceń w tym miesiącu." },
