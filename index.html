@@ -1152,6 +1152,7 @@ function App() {
       <TabBar
         activeTab={activeTab}
         view={view}
+        year={year}
         onSelectMonth={(i) => { setActiveTab(i); setView("month"); }}
         yearData={yearData}
       />
@@ -1177,6 +1178,7 @@ function App() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-24 pt-4">
         {view === "month" && (
           <MonthView
+            key={activeTab}
             monthName={MONTH_NAMES[activeTab]}
             year={year}
             isCurrentMonth={!isYearSearch && year === new Date().getFullYear() && activeTab === new Date().getMonth()}
@@ -1499,33 +1501,56 @@ function Header({ saveState, onBackups, onUndo, undoCount, year, onYearChange })
   );
 }
 
-function TabBar({ activeTab, view, onSelectMonth, yearData }) {
+function TabBar({ activeTab, view, year, onSelectMonth, yearData }) {
+  const [showPastMonths, setShowPastMonths] = useState(false);
+  const now = new Date();
+  const isCurrentYear = year === now.getFullYear();
+  const currentMonthIdx = now.getMonth();
+  const pastMonthsCount = isCurrentYear ? currentMonthIdx : 0;
+  const isCollapsed = pastMonthsCount > 0 && !showPastMonths;
+
+  const renderMonthButton = (name, idx) => {
+    const isActive = view === "month" && activeTab === idx;
+    const zysk = yearData.months[idx]?.zysk ?? 0;
+    return (
+      <button
+        key={name}
+        onClick={() => onSelectMonth(idx)}
+        className="flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap flex items-center gap-1.5"
+        style={{
+          background: isActive ? PRIMARY : "transparent",
+          color: isActive ? "white" : "#3F534C",
+        }}
+      >
+        {name}
+        {zysk !== 0 && (
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: isActive ? "white" : zysk > 0 ? PRIMARY : CORAL, opacity: isActive ? 0.8 : 1 }}
+          />
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="sticky top-0 z-20 border-b" style={{ background: SURFACE, borderColor: LINE_COLOR }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex gap-1 overflow-x-auto py-2" style={{ scrollbarWidth: "thin" }}>
+          {pastMonthsCount > 0 && (
+            <button
+              onClick={() => setShowPastMonths((v) => !v)}
+              className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap flex items-center gap-1"
+              style={{ background: "transparent", color: "#8CA098", border: `1px dashed ${LINE_COLOR}` }}
+              title={isCollapsed ? "Pokaż poprzednie miesiące" : "Ukryj poprzednie miesiące"}
+            >
+              <ChevronRight size={13} style={{ transform: isCollapsed ? "none" : "rotate(180deg)" }} />
+              {isCollapsed ? "Poprzednie" : "Ukryj"}
+            </button>
+          )}
           {MONTH_NAMES.map((name, idx) => {
-            const isActive = view === "month" && activeTab === idx;
-            const zysk = yearData.months[idx]?.zysk ?? 0;
-            return (
-              <button
-                key={name}
-                onClick={() => onSelectMonth(idx)}
-                className="flex-shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap flex items-center gap-1.5"
-                style={{
-                  background: isActive ? PRIMARY : "transparent",
-                  color: isActive ? "white" : "#3F534C",
-                }}
-              >
-                {name}
-                {zysk !== 0 && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: isActive ? "white" : zysk > 0 ? PRIMARY : CORAL, opacity: isActive ? 0.8 : 1 }}
-                  />
-                )}
-              </button>
-            );
+            if (isCollapsed && idx < currentMonthIdx) return null;
+            return renderMonthButton(name, idx);
           })}
         </div>
       </div>
@@ -1536,31 +1561,31 @@ function TabBar({ activeTab, view, onSelectMonth, yearData }) {
 function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, onAddClient, onAddPurchase, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         <button
           onClick={onAddClient}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 flex-shrink-0"
           style={{ background: PRIMARY }}
         >
           <Users size={15} /> Zaplanuj zlecenie
         </button>
         <button
           onClick={onAddPurchase}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 flex-shrink-0"
           style={{ background: CORAL }}
         >
           <Receipt size={15} /> Zakupy
         </button>
         <button
           onClick={onAddPrivate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border flex-shrink-0"
           style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, borderColor: "#CECBF6" }}
         >
           <Clock size={15} /> Termin prywatny
         </button>
         <button
           onClick={onAddFreeDay}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border flex-shrink-0"
           style={{ background: "#FDF6E9", color: "#8A6A1F", borderColor: "#EED9A8" }}
         >
           <Umbrella size={15} /> Dzień wolny
@@ -1568,14 +1593,14 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         <span className="w-px my-1" style={{ background: LINE_COLOR }} />
         <button
           onClick={onGoClients}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
           style={{ background: view === "clients" ? PRIMARY_DARK : "#F0EDE6", color: view === "clients" ? "white" : "#6B5D4A" }}
         >
           <Users size={14} /> Baza klientów
         </button>
         <button
           onClick={onGoUpcoming}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
           style={{ background: view === "upcoming" ? PRIMARY_DARK : "#EAF1F8", color: view === "upcoming" ? "white" : "#2A5C8A" }}
         >
           <CalendarClock size={14} /> Zaplanowane
@@ -1591,7 +1616,7 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         {completedCount > 0 && (
           <button
             onClick={onGoCompleted}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
             style={{ background: view === "wykonane" ? PRIMARY_DARK : MINT, color: view === "wykonane" ? "white" : PRIMARY_DARK }}
           >
             <CheckCircle2 size={14} /> Wykonane
@@ -1606,7 +1631,7 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         {invoicesCount > 0 && (
           <button
             onClick={onGoFaktury}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
             style={{ background: view === "faktury" ? GOLD : "#FDF3E0", color: view === "faktury" ? "white" : GOLD }}
           >
             <Receipt size={14} /> Faktury
@@ -1621,7 +1646,7 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         {overdueCount > 0 && (
           <button
             onClick={onGoOverdue}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
             style={{ background: view === "overdue" ? CORAL : "#FCE9E7", color: view === "overdue" ? "white" : CORAL }}
           >
             <AlertTriangle size={14} /> Zaległe
@@ -1635,7 +1660,7 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         )}
         <button
           onClick={onGoSummary}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
           style={{ background: view === "summary" ? PRIMARY_DARK : MINT, color: view === "summary" ? "white" : PRIMARY_DARK }}
         >
           <TrendingUp size={14} /> Podsumowanie
