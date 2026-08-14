@@ -1713,7 +1713,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
 
       <div className="flex gap-3 flex-wrap">
         <KpiCard icon={Wallet} label="Zlecenia wykonane" value={`${summary.liczbaZlecen} · ${fmtPLN(summary.zarobki)}`} accent={PRIMARY_DARK} onClick={() => setDetail("zarobki")} />
-        <KpiCard icon={Receipt} label="Wydatki" value={fmtPLN(summary.wydatki)} accent={CORAL} onClick={() => setDetail("wydatki")} />
+        <KpiCard icon={Receipt} label="Wydatki" value={`${detailLists.wydatki.length} · ${fmtPLN(summary.wydatki)}`} accent={CORAL} onClick={() => setDetail("wydatki")} />
         <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(summary.zysk)} accent={summary.zysk >= 0 ? PRIMARY_DARK : CORAL} />
         <KpiCard icon={Clock} label="Śr. stawka" value={summary.stawka > 0 ? fmtPLN(summary.stawka) + "/h" : "—"} />
         {summary.zaplanowaneLiczba > 0 && (
