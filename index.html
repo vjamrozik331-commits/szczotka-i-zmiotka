@@ -1713,15 +1713,15 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
 
       <div className="flex gap-3 flex-wrap">
         <KpiCard icon={Wallet} label="Zlecenia wykonane" value={`${summary.liczbaZlecen} · ${fmtPLN(summary.zarobki)}`} accent={PRIMARY_DARK} onClick={() => setDetail("zarobki")} />
-        <KpiCard icon={Receipt} label="Wydatki" value={`${detailLists.wydatki.length} · ${fmtPLN(summary.wydatki)}`} accent={CORAL} onClick={() => setDetail("wydatki")} />
-        <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(summary.zysk)} accent={summary.zysk >= 0 ? PRIMARY_DARK : CORAL} />
-        <KpiCard icon={Clock} label="Śr. stawka" value={summary.stawka > 0 ? fmtPLN(summary.stawka) + "/h" : "—"} />
         {summary.zaplanowaneLiczba > 0 && (
           <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={() => setDetail("zaplanowane")} />
         )}
         {summary.zaległeLiczba > 0 && (
           <KpiCard icon={AlertTriangle} label="Zaległe" value={`${summary.zaległeLiczba} · ${fmtPLN(summary.zaległeZarobki)}`} accent={CORAL} onClick={() => setDetail("zalegle")} />
         )}
+        <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(summary.zysk)} accent={summary.zysk >= 0 ? PRIMARY_DARK : CORAL} />
+        <KpiCard icon={Clock} label="Śr. stawka" value={summary.stawka > 0 ? fmtPLN(summary.stawka) + "/h" : "—"} />
+        <KpiCard icon={Receipt} label="Wydatki" value={`${detailLists.wydatki.length} · ${fmtPLN(summary.wydatki)}`} accent={CORAL} onClick={() => setDetail("wydatki")} />
         {freeDays.length > 0 && (
           <KpiCard icon={Umbrella} label="Dni wolne" value={freeDays.length} accent="#8A6A1F" onClick={() => setDetail("wolne")} />
         )}
