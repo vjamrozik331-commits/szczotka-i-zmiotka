@@ -579,8 +579,9 @@
       document.getElementById("successDate").textContent = `${fmtPolishDate(selectedDate)}, ${selectedTime}`;
       document.getElementById("bookingFormWrap").style.display = "none";
       document.getElementById("bookingSuccess").style.display = "block";
-    }).catch(() => {
-      bfError.textContent = "Nie udało się wysłać zgłoszenia. Spróbuj ponownie albo zadzwoń: 537 200 464.";
+    }).catch((err) => {
+      const code = err && err.code ? ` (${err.code})` : "";
+      bfError.textContent = `Nie udało się wysłać zgłoszenia${code}. Spróbuj ponownie albo zadzwoń: 537 200 464.`;
       bfError.style.display = "block";
       bfSubmit.disabled = false;
       bfSubmit.textContent = "Wyślij zgłoszenie";
