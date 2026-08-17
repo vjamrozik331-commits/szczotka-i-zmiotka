@@ -90,7 +90,7 @@
 </script>
 <div id="root"></div>
 <script type="text/babel" data-presets="react" data-type="module">
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 const {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -327,6 +327,39 @@ function compareEntries(a, b) {
 
 // One-time migration helper: builds an explicit client list from historical entries
 // (used the first time the app runs, before a real "clients" list exists yet).
+function computeBusyDates(entriesArr, freeDaysArr) {
+  const set = new Set();
+  (entriesArr || []).forEach((e) => {
+    if (!e.data || e.statusZlecenia === "Odwołane") return;
+    const isAppointment = (e.klient && e.klient.trim()) || e.typWpisu === "prywatne";
+    if (isAppointment) set.add(e.data);
+  });
+  (freeDaysArr || []).forEach((d) => { if (d.date) set.add(d.date); });
+  return Array.from(set);
+}
+
+// Publiczna dostępność godzinowa (dla formularza rezerwacji na stronie WWW):
+// - offDates: dni całkowicie niedostępne (dni wolne Vanessy) — cały dzień zablokowany
+// - slotsByDate: zajęte przedziały godzinowe każdego dnia, wyliczone tak samo jak
+//   wykrywanie konfliktów w apce (godzinaStart + godziny, domyślnie 1h jeśli nie podano)
+function computePublicAvailability(entriesArr, freeDaysArr) {
+  const offDates = new Set();
+  (freeDaysArr || []).forEach((d) => { if (d.date) offDates.add(d.date); });
+  const slotsByDate = {};
+  (entriesArr || []).forEach((e) => {
+    if (!e.data || e.statusZlecenia === "Odwołane") return;
+    const isAppointment = (e.klient && e.klient.trim()) || e.typWpisu === "prywatne";
+    if (!isAppointment || !e.godzinaStart) return;
+    const startMin = timeToMinutes(e.godzinaStart);
+    const durMin = (Number(e.godziny) || 1) * 60;
+    const endMin = startMin + durMin;
+    const fmt = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+    if (!slotsByDate[e.data]) slotsByDate[e.data] = [];
+    slotsByDate[e.data].push({ start: fmt(startMin), end: fmt(endMin) });
+  });
+  return { offDates: Array.from(offDates), slotsByDate };
+}
+
 function deriveClientsFromEntries(entries) {
   const map = {};
   const order = [];
@@ -451,6 +484,61 @@ function App() {
     return () => unsub();
   }, []);
 
+  // Refy trzymające najnowszy stan — używane przez nasłuch rezerwacji poniżej, żeby
+  // uniknąć "starych" domknięć (closures) bez konieczności ciągłego przełączania się na nowo
+  // na kolekcję Firestore przy każdej zmianie danych.
+  const entriesRef = useRef(entries);
+  useEffect(() => { entriesRef.current = entries; }, [entries]);
+  const freeDaysRef = useRef(freeDays);
+  useEffect(() => { freeDaysRef.current = freeDays; }, [freeDays]);
+  const clientsRef = useRef(clients);
+  useEffect(() => { clientsRef.current = clients; }, [clients]);
+
+  // Automatyczny import zapisów klientów ze strony WWW: formularz na stronie zapisuje
+  // każdą rezerwację jako osobny dokument w kolekcji "rezerwacje" (status "nowe"), żeby
+  // nigdy nie dotykać bezpośrednio głównego dokumentu z danymi (to jedyne miejsce, które
+  // je zapisuje, tak jak dotychczas — brak ryzyka nadpisania danych przez wielu piszących
+  // naraz). Ta aplikacja, gdy jest otwarta, wyłapuje nowe rezerwacje i sama dopisuje je
+  // do terminarza jako zaplanowane zlecenie.
+  useEffect(() => {
+    if (!window.firebaseDb) return;
+    const q = window.firebaseDb.collection("rezerwacje").where("status", "==", "nowe");
+    const unsub = q.onSnapshot((snap) => {
+      snap.docChanges().forEach((change) => {
+        if (change.type !== "added") return;
+        const doc = change.doc;
+        const data = doc.data() || {};
+        if (!data.data) { doc.ref.update({ status: "odrzucone", powod: "brak daty" }).catch(() => {}); return; }
+        const currentEntries = entriesRef.current;
+        const nextId = currentEntries.length ? Math.max(...currentEntries.map((e) => e.id)) + 1 : 1;
+        const newEntry = {
+          id: nextId,
+          data: data.data,
+          godzinaStart: data.godzinaStart || "",
+          klient: (data.klient || "").trim(),
+          adres: (data.adres || "").trim(),
+          opisUslugi: (data.opisUslugi || "usługi sprzątające").trim(),
+          godziny: data.godziny ? Number(data.godziny) : null, zarobki: null, wydatki: null, opisWydatkow: "", kategoria: "",
+          typKlienta: "Osoba prywatna", status: "",
+          uwagi: ["Zapisano przez stronę WWW", (data.telefon || "").trim() ? `tel. ${data.telefon.trim()}` : "", (data.uwagi || "").trim()]
+            .filter(Boolean).join(" · "),
+          statusZlecenia: "Zaplanowane", fakturaVat: false, typWpisu: "",
+        };
+        const nextEntries = [...currentEntries, newEntry];
+        const nextClients = newEntry.klient
+          ? computeClientsAfterEntry(clientsRef.current, newEntry.klient, newEntry.adres, newEntry.typKlienta)
+          : clientsRef.current;
+        entriesRef.current = nextEntries;
+        clientsRef.current = nextClients;
+        setEntries(nextEntries);
+        setClients(nextClients);
+        persistState(nextEntries, freeDaysRef.current, nextClients);
+        doc.ref.update({ status: "zaimportowane", zaimportowanoAt: Date.now() }).catch(() => {});
+      });
+    }, () => {});
+    return () => unsub();
+  }, []);
+
   // Explicit sync — called only from user-initiated mutations below, never from the
   // Firestore listener itself. This is what prevents a device that just loaded a
   // (possibly momentarily stale) snapshot from echoing it back and clobbering a
@@ -478,6 +566,11 @@ function App() {
       docRef.set({ items: nextEntries, freeDays: nextFreeDays, clients: clientsToSave })
         .then(() => setSaveState("saved"))
         .catch(() => setSaveState("error"));
+      // Publiczny, "chudy" dokument bez danych klientów/finansów — czyta go strona WWW,
+      // żeby pokazać zajęte dni w formularzu zapisu, bez ujawniania reszty bazy.
+      window.firebaseDb.collection("app-data").doc("public-availability")
+        .set({ ...computePublicAvailability(nextEntries, nextFreeDays), updatedAt: Date.now() })
+        .catch(() => {});
       // Automatyczna, codzienna kopia zapasowa — działa w tle, bez żadnej akcji użytkownika.
       // Nadpisuje się przez cały dzień (zawsze trzyma najnowszy stan z danego dnia), a od
       // północy zaczyna nowy, osobny dokument — więc z czasem powstaje historia dzień po dniu,
