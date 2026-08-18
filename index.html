@@ -380,6 +380,52 @@ const emptyForm = {
   statusZlecenia: "", saveClientToList: true, fakturaVat: false, typWpisu: "",
 };
 
+function WwwOrderPopup({ entry, remaining, onClose, onJumpToDay }) {
+  const dateFmt = entry.data ? `${entry.data.slice(8, 10)}.${entry.data.slice(5, 7)}.${entry.data.slice(0, 4)}` : "—";
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-4 pt-16 sm:pt-4" style={{ background: "rgba(28,43,39,0.5)" }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: SURFACE }}>
+        <div className="px-5 py-4 flex items-center gap-2.5" style={{ background: "#1F8A70" }}>
+          <Globe size={19} color="white" />
+          <h3 style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: "1.05rem", color: "white" }}>
+            Nowe zlecenie ze strony WWW
+          </h3>
+        </div>
+        <div className="px-5 py-4 space-y-2.5">
+          <div className="text-sm font-semibold" style={{ color: INK }}>{entry.klient || "—"}</div>
+          <div className="flex items-center gap-2 text-sm" style={{ color: "#3E5850" }}>
+            <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: "#1F8A70" }}>{dateFmt}</span>
+            {entry.godzinaStart && <span style={{ fontFamily: MONO_FONT }}>{entry.godzinaStart}</span>}
+            {entry.godziny ? <span className="text-xs" style={{ color: "#8CA098" }}>(~{entry.godziny}h)</span> : null}
+          </div>
+          {entry.adres && <div className="text-sm" style={{ color: "#3E5850" }}>{entry.adres}</div>}
+          {entry.opisUslugi && <div className="text-sm" style={{ color: "#3E5850" }}>{entry.opisUslugi}</div>}
+          {entry.uwagi && <div className="text-xs pt-1" style={{ color: "#8CA098" }}>{entry.uwagi}</div>}
+          {remaining > 0 && (
+            <div className="text-xs pt-1" style={{ color: "#1F8A70" }}>+ jeszcze {remaining} {remaining === 1 ? "nowe zgłoszenie" : "nowe zgłoszenia"}</div>
+          )}
+        </div>
+        <div className="px-5 py-4 flex gap-2 border-t" style={{ borderColor: LINE_COLOR }}>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-gray-50 border"
+            style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}
+          >
+            Zamknij
+          </button>
+          <button
+            onClick={() => onJumpToDay(entry.data)}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition"
+            style={{ background: "#1F8A70" }}
+          >
+            Pokaż w kalendarzu
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [entries, setEntries] = useState(null);
   const [freeDays, setFreeDays] = useState([]);
@@ -418,6 +464,7 @@ function App() {
   const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
   const [saveState, setSaveState] = useState("idle");
   const [undoHistory, setUndoHistory] = useState([]);
+  const [wwwQueue, setWwwQueue] = useState([]); // kolejka nowych zleceń zaimportowanych ze strony WWW, czekających na popup
 
   // load from Firestore (real-time sync across devices) with localStorage fallback
   useEffect(() => {
@@ -535,6 +582,7 @@ function App() {
         setClients(nextClients);
         persistState(nextEntries, freeDaysRef.current, nextClients);
         doc.ref.update({ status: "zaimportowane", zaimportowanoAt: Date.now() }).catch(() => {});
+        setWwwQueue((q) => [...q, newEntry]);
       });
     }, () => {});
     return () => unsub();
@@ -1243,6 +1291,20 @@ function App() {
         year={year}
         onYearChange={setYear}
       />
+
+      {wwwQueue.length > 0 && (
+        <WwwOrderPopup
+          entry={wwwQueue[0]}
+          remaining={wwwQueue.length - 1}
+          onClose={() => setWwwQueue((q) => q.slice(1))}
+          onJumpToDay={(dateStr) => {
+            setWwwQueue((q) => q.slice(1));
+            setActiveTab(new Date(dateStr + "T00:00:00").getMonth());
+            setYear(new Date(dateStr + "T00:00:00").getFullYear());
+            setView("month");
+          }}
+        />
+      )}
 
       <TabBar
         activeTab={activeTab}
