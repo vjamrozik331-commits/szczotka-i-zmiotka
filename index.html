@@ -114,6 +114,7 @@ const X = (p) => <Icon {...p}><path d="M18 6L6 18M6 6l12 12"/></Icon>;
 const TrendingUp = (p) => <Icon {...p}><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></Icon>;
 const Wallet = (p) => <Icon {...p}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 1 0 0 4h3v-4z"/></Icon>;
 const Receipt = (p) => <Icon {...p}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></Icon>;
+const Globe = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></Icon>;
 const Users = (p) => <Icon {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>;
 const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></Icon>;
 const Percent = (p) => <Icon {...p}><path d="M19 5L5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></Icon>;
@@ -522,7 +523,7 @@ function App() {
           typKlienta: "Osoba prywatna", status: "",
           uwagi: ["Zapisano przez stronę WWW", (data.telefon || "").trim() ? `tel. ${data.telefon.trim()}` : "", (data.uwagi || "").trim()]
             .filter(Boolean).join(" · "),
-          statusZlecenia: "Zaplanowane", fakturaVat: false, typWpisu: "",
+          statusZlecenia: "Zaplanowane", fakturaVat: false, typWpisu: "", zrodloRezerwacji: "www",
         };
         const nextEntries = [...currentEntries, newEntry];
         const nextClients = newEntry.klient
@@ -761,7 +762,8 @@ function App() {
     const today = todayStr();
     const zalegle = all.filter((e) => e.statusZlecenia === "Zaplanowane" && e.data < today).sort(compareEntries);
     const prywatne = all.filter((e) => e.typWpisu === "prywatne" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
-    return { zarobki, wydatki, zaplanowane, zalegle, prywatne };
+    const zeStrony = all.filter((e) => e.zrodloRezerwacji === "www" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
+    return { zarobki, wydatki, zaplanowane, zalegle, prywatne, zeStrony };
   }, [entries, activeTab, year]);
 
   const knownClients = useMemo(() => {
@@ -1820,6 +1822,9 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
         )}
         {detailLists.prywatne.length > 0 && (
           <KpiCard icon={Clock} label="Terminy prywatne" value={detailLists.prywatne.length} accent={PRIVATE_PURPLE} onClick={() => setDetail("prywatne")} />
+        )}
+        {detailLists.zeStrony.length > 0 && (
+          <KpiCard icon={Globe} label="Zapisy ze strony WWW" value={detailLists.zeStrony.length} accent="#1F8A70" onClick={() => setDetail("zeStrony")} />
         )}
       </div>
 
@@ -3295,6 +3300,7 @@ const DETAIL_CONFIG = {
   zalegle: { title: "Zaległe zlecenia", icon: AlertTriangle, color: CORAL, empty: "Brak zaległych zleceń w tym miesiącu." },
   wolne: { title: "Dni wolne", icon: Umbrella, color: "#8A6A1F", empty: "Brak dni wolnych w tym miesiącu." },
   prywatne: { title: "Terminy prywatne", icon: Clock, color: PRIVATE_PURPLE, empty: "Brak terminów prywatnych w tym miesiącu." },
+  zeStrony: { title: "Zapisy ze strony WWW", icon: Globe, color: "#1F8A70", empty: "Brak zapisów ze strony WWW w tym miesiącu." },
 };
 
 const ORDER_STATUS_BADGE = {
