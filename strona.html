@@ -197,6 +197,13 @@
   .contact-card .value{font-family:var(--display); font-size:1.45rem; font-weight:600; color:#fff;}
   .contact-note{margin-top:26px; font-size:0.86rem; color:#AFC8BE; display:flex; align-items:center; gap:12px;}
   .contact-note img{height:22px; opacity:0.9;}
+  .social-row{display:flex; gap:12px; margin-top:20px; flex-wrap:wrap;}
+  .social-btn{
+    display:inline-flex; align-items:center; gap:9px; padding:11px 18px; border-radius:999px;
+    background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.22); text-decoration:none;
+    color:#fff; font-size:0.88rem; font-weight:600; transition:background 0.15s ease;
+  }
+  .social-btn:hover{background:rgba(255,255,255,0.18);}
 
   footer{padding:36px 24px; text-align:center;}
   footer img{height:26px; margin:0 auto 8px;}
@@ -431,6 +438,16 @@
         <a class="contact-card" href="mailto:vanjam9212@wp.pl">
           <div class="label">E-mail</div>
           <div class="value" style="font-size:1.1rem; word-break:break-all;">vanjam9212@wp.pl</div>
+        </a>
+      </div>
+      <div class="social-row">
+        <a class="social-btn" href="https://www.instagram.com/zmiotkaszczotkai/" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="white" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.7"/><circle cx="17.5" cy="6.5" r="1.2" fill="white"/></svg>
+          <span>Instagram</span>
+        </a>
+        <a class="social-btn" href="https://www.facebook.com/profile.php?id=61576321589649" target="_blank" rel="noopener" aria-label="Facebook">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 8h2V4h-2c-2.2 0-4 1.8-4 4v2H9v4h2v6h4v-6h2.5l.5-4H15V8c0-.3.2-1 1-1z" fill="white"/></svg>
+          <span>Facebook</span>
         </a>
       </div>
       <div class="contact-note">
