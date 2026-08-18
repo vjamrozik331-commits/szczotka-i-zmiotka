@@ -90,6 +90,19 @@
   h2{font-family:var(--display); font-weight:600; color:var(--primary); font-size:clamp(1.6rem,2.4vw,2.2rem); margin:0 0 14px; line-height:1.15;}
   .section-desc{color:#3E5850; font-size:1rem; line-height:1.6; margin:0;}
 
+  /* o mnie */
+  .about-section{padding-top:64px;}
+  .about-wrap{display:grid; grid-template-columns:auto 1fr; gap:32px; align-items:start;}
+  @media (max-width:640px){ .about-wrap{grid-template-columns:1fr; text-align:left;} .about-badge{margin-bottom:6px;} }
+  .about-badge{
+    width:72px; height:72px; border-radius:50%; background:var(--primary); color:#fff;
+    font-family:var(--display); font-weight:600; font-size:1.5rem; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .about-text{color:#3E5850; font-size:1.02rem; line-height:1.7; margin:0 0 16px;}
+  .about-text:last-child{margin-bottom:0;}
+  .about-text em{font-style:italic; color:var(--primary); font-weight:500;}
+
   /* services — 8 items grid */
   .services-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px;}
   @media (max-width:960px){ .services-grid{grid-template-columns:repeat(2,1fr);} }
@@ -243,6 +256,21 @@
   </section>
 
   <div class="diagonal-divider"></div>
+
+  <section class="section about-section" id="o-mnie">
+    <div class="wrap">
+      <div class="about-wrap">
+        <div class="about-badge">VJ</div>
+        <div>
+          <div class="section-eyebrow">O mnie</div>
+          <h2>Kim jestem</h2>
+          <p class="about-text">Nazywam się Vanessa Jamrozik i od półtora roku robię coś, co naprawdę kocham — prowadzę „Szczotka i Zmiotka", firmę usług sprzątających w Bolesławcu i okolicy.</p>
+          <p class="about-text">To nie jest dla mnie zwykła praca. Każdy dom, do którego przyjeżdżam, traktuję z takim samym szacunkiem, z jakim chciałabym, aby ktoś traktował mój własny. Przez ten czas nauczyłam się, że najważniejsze są nie tylko czyste podłogi i lśniące okna, ale przede wszystkim zaufanie, dlatego zawsze pytam o Twoje potrzeby, alergie i preferencje, zanim wezmę się do pracy.</p>
+          <p class="about-text">Najbardziej cieszy mnie fakt, że wielu moich klientów jest ze mną od samego początku — to dla mnie największy dowód, że robię to co lubię oraz potrafię sprostać Waszym oczekiwaniom. Pozwól, że zadbam o Twój dom. <em>Zrobię to tak, jak dbam o swój.</em> A Ty w tym czasie możesz zająć się innymi, równie ważnymi sprawami.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <section class="section" id="uslugi">
     <div class="wrap">
