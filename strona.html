@@ -114,11 +114,11 @@
   /* booking */
   .booking-wrap{display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:start; background:var(--surface); border:1px solid var(--line); border-radius:24px; padding:40px;}
   @media (max-width:900px){ .booking-wrap{grid-template-columns:1fr; padding:24px;} }
-  .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
-  .cal-head .cal-label{font-family:var(--display); font-weight:600; color:var(--primary); font-size:1.1rem;}
-  .cal-nav{display:flex; gap:6px;}
-  .cal-nav button{width:32px; height:32px; border-radius:9px; border:1px solid var(--line); background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--primary); font-size:1rem;}
-  .cal-nav button:disabled{opacity:0.3; cursor:not-allowed;}
+  .cal-head{display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:18px;}
+  .cal-head .cal-label{font-family:var(--display); font-weight:600; color:var(--primary); font-size:1.1rem; min-width:130px; text-align:center;}
+  .cal-arrow{width:32px; height:32px; border-radius:9px; border:1px solid var(--line); background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--primary); font-size:1rem; flex-shrink:0;}
+  .cal-arrow:disabled{opacity:0.3; cursor:not-allowed;}
+  .cal-weekdays .weekend-label{color:#B99A5C;}
   .cal-weekdays{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px;}
   .cal-weekdays span{font-family:var(--mono); font-size:0.66rem; color:#8CA098; text-align:center; text-transform:uppercase;}
   .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
@@ -128,6 +128,9 @@
   .cal-cell.free:hover{background:#D3E4DB;}
   .cal-cell.busy{background:transparent; color:#C7D3CD; cursor:not-allowed; text-decoration:line-through;}
   .cal-cell.free{position:relative;}
+  .cal-cell.weekend.free{background:#F0EAD9;}
+  .cal-cell.weekend.free:hover{background:#E7DFC8;}
+  .cal-cell.weekend.past{background:#F5F2EA;}
   .cal-cell.has-bookings::after{content:""; position:absolute; bottom:5px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:var(--coral);}
   .cal-cell.past{background:transparent; color:#DCE4E0; cursor:not-allowed;}
   .cal-cell.selected{background:var(--coral); color:#fff;}
@@ -272,13 +275,11 @@
       <div class="booking-wrap">
         <div>
           <div class="cal-head">
-            <div class="cal-nav">
-              <button type="button" id="calPrev" aria-label="Poprzedni miesiąc">‹</button>
-              <button type="button" id="calNext" aria-label="Następny miesiąc">›</button>
-            </div>
+            <button type="button" class="cal-arrow" id="calPrev" aria-label="Poprzedni miesiąc">‹</button>
             <div class="cal-label" id="calLabel">—</div>
+            <button type="button" class="cal-arrow" id="calNext" aria-label="Następny miesiąc">›</button>
           </div>
-          <div class="cal-weekdays"><span>Pn</span><span>Wt</span><span>Śr</span><span>Cz</span><span>Pt</span><span>So</span><span>Nd</span></div>
+          <div class="cal-weekdays"><span>Pn</span><span>Wt</span><span>Śr</span><span>Cz</span><span>Pt</span><span class="weekend-label">So</span><span class="weekend-label">Nd</span></div>
           <div class="cal-grid" id="calGrid"><div class="cal-loading">Wczytuję dostępne terminy…</div></div>
           <div class="cal-legend">
             <span><i class="dot free"></i>wolny termin</span>
@@ -475,8 +476,10 @@
     for (let i=0; i<startOffset; i++) html += `<div class="cal-cell empty"></div>`;
     for (let d=1; d<=daysInMonth; d++){
       const key = dateKey(viewYear, viewMonth, d);
+      const dow = new Date(viewYear, viewMonth, d).getDay(); // 0=Nd, 6=So
       let cls = "cal-cell";
       let clickable = false;
+      if (dow === 0 || dow === 6) cls += " weekend";
       if (key < todayStr) cls += " past";
       else if (offDates.has(key)) cls += " busy";
       else {

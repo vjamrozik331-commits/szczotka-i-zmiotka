@@ -351,7 +351,7 @@ function computePublicAvailability(entriesArr, freeDaysArr) {
     const isAppointment = (e.klient && e.klient.trim()) || e.typWpisu === "prywatne";
     if (!isAppointment || !e.godzinaStart) return;
     const startMin = timeToMinutes(e.godzinaStart);
-    const durMin = (Number(e.godziny) || 1) * 60;
+    const durMin = (Number(e.godziny) || 2) * 60; // domyślnie 2h, gdy czas trwania nie jest wpisany (tylko dla publicznej dostępności na stronie)
     const endMin = startMin + durMin;
     const fmt = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
     if (!slotsByDate[e.data]) slotsByDate[e.data] = [];
