@@ -173,6 +173,7 @@
   .cal-arrow{width:32px; height:32px; border-radius:9px; border:1px solid var(--line); background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--primary); font-size:1rem; flex-shrink:0;}
   .cal-arrow:disabled{opacity:0.3; cursor:not-allowed;}
   .cal-weekdays .weekend-label{color:#B99A5C;}
+  .cal-weekdays .sunday-label{color:var(--coral);}
   .cal-weekdays{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px;}
   .cal-weekdays span{font-family:var(--mono); font-size:0.66rem; color:#8CA098; text-align:center; text-transform:uppercase;}
   .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
@@ -181,10 +182,14 @@
   .cal-cell.free{background:var(--primary-soft); color:var(--primary); cursor:pointer;}
   .cal-cell.free:hover{background:#D3E4DB;}
   .cal-cell.busy{background:transparent; color:#C7D3CD; cursor:not-allowed; text-decoration:line-through;}
+  .cal-cell.holiday{background:var(--coral-soft); color:#B23A2E; cursor:not-allowed; font-weight:700; border:1px solid #F0C4BD;}
   .cal-cell.free{position:relative;}
   .cal-cell.weekend.free{background:#F0EAD9;}
   .cal-cell.weekend.free:hover{background:#E7DFC8;}
   .cal-cell.weekend.past{background:#F5F2EA;}
+  .cal-cell.sunday.free{background:var(--coral-soft); color:#B23A2E;}
+  .cal-cell.sunday.free:hover{background:#F5D6D0;}
+  .cal-cell.sunday.past{background:#FBEFED; color:#C99187;}
   .cal-cell.has-bookings::after{content:""; position:absolute; bottom:5px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:var(--coral);}
   .cal-cell.past{background:transparent; color:#DCE4E0; cursor:not-allowed;}
   .cal-cell.selected{background:var(--coral); color:#fff;}
@@ -193,6 +198,7 @@
   .cal-legend .dot{width:9px; height:9px; border-radius:3px; display:inline-block;}
   .cal-legend .dot.free{background:var(--primary-soft); border:1px solid var(--primary);}
   .cal-legend .dot.busy{background:#E4EAE7;}
+  .cal-legend .dot.holiday{background:var(--coral-soft); border:1px solid #F0C4BD;}
   .cal-loading{font-family:var(--mono); font-size:0.8rem; color:#8CA098; padding:20px 0;}
   .slot-picker{margin-top:18px; padding-top:18px; border-top:1px solid var(--line);}
   .slot-picker-label{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:#5C766C; font-weight:600; margin-bottom:10px;}
@@ -485,11 +491,12 @@
             <div class="cal-label" id="calLabel">—</div>
             <button type="button" class="cal-arrow" id="calNext" aria-label="Następny miesiąc">›</button>
           </div>
-          <div class="cal-weekdays"><span>Pn</span><span>Wt</span><span>Śr</span><span>Cz</span><span>Pt</span><span class="weekend-label">So</span><span class="weekend-label">Nd</span></div>
+          <div class="cal-weekdays"><span>Pn</span><span>Wt</span><span>Śr</span><span>Cz</span><span>Pt</span><span class="weekend-label">So</span><span class="sunday-label">Nd</span></div>
           <div class="cal-grid" id="calGrid"><div class="cal-loading">Wczytuję dostępne terminy…</div></div>
           <div class="cal-legend">
             <span><i class="dot free"></i>wolny termin</span>
             <span><i class="dot busy"></i>zajęty / niedostępny</span>
+            <span><i class="dot holiday"></i>święto</span>
           </div>
           <div class="slot-picker" id="slotPicker" style="display:none;">
             <div class="slot-picker-label">Wybierz godzinę</div>
@@ -622,6 +629,43 @@
 
   const MONTHS = ["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
   const SLOT_HOURS = [7,8,9,10,11,12,13,14,15,16,17]; // godziny startowe do wyboru
+
+  // Polskie święta ustawowo wolne od pracy — liczone lokalnie, niezależnie od apki.
+  function fmtDateISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+  function addDaysToDate(date, days){ const d = new Date(date); d.setDate(d.getDate()+days); return d; }
+  function easterSunday(year){
+    const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+    const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
+    const m=Math.floor((a+11*h+22*l)/451);
+    const month=Math.floor((h+l-7*m+114)/31), day=((h+l-7*m+114)%31)+1;
+    return new Date(year, month-1, day);
+  }
+  const _holidayCache = {};
+  function polishHolidaysForYear(year){
+    if (_holidayCache[year]) return _holidayCache[year];
+    const easter = easterSunday(year);
+    const map = {
+      [`${year}-01-01`]: "Nowy Rok",
+      [`${year}-01-06`]: "Święto Trzech Króli",
+      [fmtDateISO(easter)]: "Wielkanoc",
+      [fmtDateISO(addDaysToDate(easter,1))]: "Poniedziałek Wielkanocny",
+      [`${year}-05-01`]: "Święto Pracy",
+      [`${year}-05-03`]: "Święto Konstytucji 3 Maja",
+      [fmtDateISO(addDaysToDate(easter,49))]: "Zielone Świątki",
+      [fmtDateISO(addDaysToDate(easter,60))]: "Boże Ciało",
+      [`${year}-08-15`]: "Wniebowzięcie NMP",
+      [`${year}-11-01`]: "Wszystkich Świętych",
+      [`${year}-11-11`]: "Święto Niepodległości",
+      [`${year}-12-25`]: "Boże Narodzenie",
+      [`${year}-12-26`]: "Drugi dzień Świąt",
+    };
+    _holidayCache[year] = map;
+    return map;
+  }
+  function polishHolidayName(dateStr){
+    return polishHolidaysForYear(Number(dateStr.slice(0,4)))[dateStr] || null;
+  }
+
   let offDates = new Set();
   let slotsByDate = {};
   const today = new Date();
@@ -677,10 +721,13 @@
     for (let d=1; d<=daysInMonth; d++){
       const key = dateKey(viewYear, viewMonth, d);
       const dow = new Date(viewYear, viewMonth, d).getDay(); // 0=Nd, 6=So
+      const holidayName = polishHolidayName(key);
       let cls = "cal-cell";
       let clickable = false;
-      if (dow === 0 || dow === 6) cls += " weekend";
+      if (dow === 6) cls += " weekend";
+      if (dow === 0) cls += " sunday";
       if (key < todayStr) cls += " past";
+      else if (holidayName) cls += " holiday";
       else if (offDates.has(key)) cls += " busy";
       else {
         cls += " free";
@@ -688,7 +735,8 @@
         if (slotsByDate[key] && slotsByDate[key].length > 0) cls += " has-bookings";
       }
       if (key === selectedDate) cls += " selected";
-      html += `<button type="button" class="${cls}" data-date="${key}" ${clickable ? "" : "disabled"}>${d}</button>`;
+      const titleAttr = holidayName ? ` title="${holidayName}"` : "";
+      html += `<button type="button" class="${cls}" data-date="${key}" ${clickable ? "" : "disabled"}${titleAttr}>${d}</button>`;
     }
     calGrid.innerHTML = html;
     calGrid.querySelectorAll(".cal-cell.free").forEach((el) => {
