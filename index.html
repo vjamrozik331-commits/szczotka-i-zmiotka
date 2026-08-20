@@ -864,7 +864,8 @@ function App() {
     const zalegle = all.filter((e) => e.statusZlecenia === "Zaplanowane" && e.data < today).sort(compareEntries);
     const prywatne = all.filter((e) => e.typWpisu === "prywatne" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
     const zeStrony = all.filter((e) => e.zrodloRezerwacji === "www" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
-    return { zarobki, wydatki, zaplanowane, zalegle, prywatne, zeStrony };
+    const oczekujacePlatnosci = all.filter((e) => e.statusZlecenia === "Wykonane" && e.status === "Oczekuje" && Number(e.zarobki) > 0).sort(compareEntries);
+    return { zarobki, wydatki, zaplanowane, zalegle, prywatne, zeStrony, oczekujacePlatnosci };
   }, [entries, activeTab, year]);
 
   const knownClients = useMemo(() => {
@@ -1413,6 +1414,7 @@ function App() {
             onEditFreeDay={openEditFreeDayGroup}
             onMoveFreeDay={openMoveFreeDayGroup}
             onGoUpcoming={() => setView("upcoming")}
+            onSetPaymentStatus={setPaymentStatus}
           />
         )}
         {view === "summary" && <SummaryView yearData={yearData} year={year} entries={entries} onGoUpcoming={() => setView("upcoming")} onEdit={openEditForm} onToggleInvoice={toggleInvoiceIssued} onSetPaymentStatus={setPaymentStatus} />}
@@ -1905,7 +1907,7 @@ function KpiCard({ icon: Icon, label, value, accent, onClick }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onEditFreeDay, onMoveFreeDay, onGoUpcoming }) {
+function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onEditFreeDay, onMoveFreeDay, onGoUpcoming, onSetPaymentStatus }) {
   const [detail, setDetail] = useState(null); // "zarobki" | "wydatki" | "zaplanowane" | "wolne" | null
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
   const [showPast, setShowPast] = useState(false);
@@ -1940,6 +1942,9 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
         )}
         {detailLists.zeStrony.length > 0 && (
           <KpiCard icon={Globe} label="Zapisy ze strony WWW" value={detailLists.zeStrony.length} accent="#1F8A70" onClick={() => setDetail("zeStrony")} />
+        )}
+        {detailLists.oczekujacePlatnosci.length > 0 && (
+          <KpiCard icon={AlertTriangle} label="Oczekujące płatności" value={detailLists.oczekujacePlatnosci.length} accent={CORAL} onClick={() => setDetail("oczekujacePlatnosci")} />
         )}
       </div>
 
@@ -2011,6 +2016,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
           onEditFreeDay={(g) => { onEditFreeDay(g); setDetail(null); }}
           onMoveFreeDay={(g) => { onMoveFreeDay(g); setDetail(null); }}
           onRemoveFreeDay={onRemoveFreeDay}
+          onSetPaymentStatus={onSetPaymentStatus}
           onClose={() => setDetail(null)}
         />
       )}
@@ -3423,6 +3429,7 @@ const DETAIL_CONFIG = {
   wolne: { title: "Dni wolne", icon: Umbrella, color: "#8A6A1F", empty: "Brak dni wolnych w tym miesiącu." },
   prywatne: { title: "Terminy prywatne", icon: Clock, color: PRIVATE_PURPLE, empty: "Brak terminów prywatnych w tym miesiącu." },
   zeStrony: { title: "Zapisy ze strony WWW", icon: Globe, color: "#1F8A70", empty: "Brak zapisów ze strony WWW w tym miesiącu." },
+  oczekujacePlatnosci: { title: "Oczekujące płatności", icon: AlertTriangle, color: CORAL, empty: "Brak oczekujących płatności w tym miesiącu." },
 };
 
 const ORDER_STATUS_BADGE = {
@@ -3524,7 +3531,7 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
   );
 }
 
-function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onEditFreeDay, onMoveFreeDay, onRemoveFreeDay, onClose }) {
+function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onEditFreeDay, onMoveFreeDay, onRemoveFreeDay, onSetPaymentStatus, onClose }) {
   const cfg = DETAIL_CONFIG[type];
   const Icon = cfg.icon;
   const isFreeDays = type === "wolne";
@@ -3628,6 +3635,11 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                       </div>
                     </div>
                     <div className="flex items-center gap-1 mt-2">
+                      {type === "oczekujacePlatnosci" && onSetPaymentStatus && (
+                        <button onClick={() => onSetPaymentStatus(e.id, "Zapłacono")} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako zapłacone">
+                          <CheckCircle2 size={15} color={PRIMARY} />
+                        </button>
+                      )}
                       {isPlanned && (
                         <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
                           <CheckCircle2 size={15} color={PRIMARY} />
