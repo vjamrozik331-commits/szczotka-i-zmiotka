@@ -1949,7 +1949,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
           <KpiCard icon={AlertTriangle} label="Oczekujące płatności" value={detailLists.oczekujacePlatnosci.length} accent={CORAL} onClick={() => setDetail("oczekujacePlatnosci")} />
         )}
         {detailLists.fakturyDoWystawienia.length > 0 && (
-          <KpiCard icon={Receipt} label="Faktury do wystawienia" value={detailLists.fakturyDoWystawienia.length} accent="#2A5C8A" onClick={() => setDetail("fakturyDoWystawienia")} />
+          <KpiCard icon={Receipt} label="Faktury do wystawienia" value={detailLists.fakturyDoWystawienia.length} accent="#8A6A1F" onClick={() => setDetail("fakturyDoWystawienia")} />
         )}
       </div>
 
@@ -2904,10 +2904,10 @@ function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, onSetPay
                           className="flex items-center gap-3 px-4 py-1.5 text-xs rounded-lg flex-wrap"
                           style={{ color: "#5B6E67" }}
                         >
-                          <button onClick={() => onEdit && onEdit(e)} className="flex items-center gap-3 flex-1 min-w-[100px] text-left hover:opacity-70 transition">
-                            <span style={{ fontFamily: MONO_FONT, minWidth: 44 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
-                            <span className="flex-1">{e.opisUslugi || "—"}</span>
-                            <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
+                          <button onClick={() => onEdit && onEdit(e)} className="flex items-center gap-3 flex-1 min-w-[100px] text-left hover:opacity-70 transition overflow-hidden">
+                            <span style={{ fontFamily: MONO_FONT, minWidth: 44, flexShrink: 0 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
+                            <span className="flex-1 truncate">{e.opisUslugi || "—"}</span>
+                            <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK, flexShrink: 0, whiteSpace: "nowrap" }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
                           </button>
                           <InvoiceStatusToggle issued={!!e.fakturaWystawiona} onClick={() => onToggleInvoice(e.id)} small />
                           <PaymentStatusMenu status={e.status} onChange={(s) => onSetPaymentStatus(e.id, s)} small />
@@ -3436,7 +3436,7 @@ const DETAIL_CONFIG = {
   prywatne: { title: "Terminy prywatne", icon: Clock, color: PRIVATE_PURPLE, empty: "Brak terminów prywatnych w tym miesiącu." },
   zeStrony: { title: "Zapisy ze strony WWW", icon: Globe, color: "#1F8A70", empty: "Brak zapisów ze strony WWW w tym miesiącu." },
   oczekujacePlatnosci: { title: "Oczekujące płatności", icon: AlertTriangle, color: CORAL, empty: "Brak oczekujących płatności w tym miesiącu." },
-  fakturyDoWystawienia: { title: "Faktury do wystawienia", icon: Receipt, color: "#2A5C8A", empty: "Brak faktur do wystawienia w tym miesiącu." },
+  fakturyDoWystawienia: { title: "Faktury do wystawienia", icon: Receipt, color: "#8A6A1F", empty: "Brak faktur do wystawienia w tym miesiącu." },
 };
 
 const ORDER_STATUS_BADGE = {
@@ -3648,8 +3648,8 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                         </button>
                       )}
                       {type === "fakturyDoWystawienia" && onToggleInvoice && (
-                        <button onClick={() => onToggleInvoice(e.id)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz fakturę jako wystawioną">
-                          <Receipt size={14} color="#2A5C8A" />
+                        <button onClick={() => onToggleInvoice(e.id)} className="p-1.5 rounded-md border hover:bg-amber-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz fakturę jako wystawioną">
+                          <Receipt size={14} color="#8A6A1F" />
                         </button>
                       )}
                       {isPlanned && (
