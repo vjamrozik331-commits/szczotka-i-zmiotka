@@ -2352,6 +2352,10 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
 function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const { done, zarobki, liczba } = data;
   const [dayDetail, setDayDetail] = useState(null); // dateStr | null
+  const [monthIdx, setMonthIdx] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() === year ? now.getMonth() : 0;
+  });
 
   const monthGroups = useMemo(() => {
     const groups = {};
@@ -2366,6 +2370,9 @@ function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onM
       return { year: y, month: m - 1, entries: groups[key] };
     });
   }, [done]);
+
+  const activeGroup = monthGroups.find((g) => g.month === monthIdx) || null;
+  const monthEntries = activeGroup ? activeGroup.entries : [];
 
   return (
     <div className="space-y-6">
@@ -2384,27 +2391,41 @@ function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onM
         </div>
       ) : (
         <>
-          {monthGroups.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
+              Lista wykonanych <span style={{ color: "#8CA098", fontWeight: 400 }}>({monthEntries.length})</span>
+            </h3>
+            <div className="flex items-center gap-2 ml-auto">
+              <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+                <ChevronLeft size={15} color={PRIMARY_DARK} />
+              </button>
+              <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+              <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+                <ChevronRight size={15} color={PRIMARY_DARK} />
+              </button>
+            </div>
+          </div>
+
+          {activeGroup && (
             <div className="flex gap-4 flex-wrap">
-              {monthGroups.map((g) => (
-                <MiniMonthCalendar
-                  key={`${g.year}-${g.month}`}
-                  year={g.year}
-                  month={g.month}
-                  entries={g.entries}
-                  tone="done"
-                  onDayClick={(dateStr) => setDayDetail(dateStr)}
-                />
-              ))}
+              <MiniMonthCalendar
+                key={`${activeGroup.year}-${activeGroup.month}`}
+                year={activeGroup.year}
+                month={activeGroup.month}
+                entries={activeGroup.entries}
+                tone="done"
+                onDayClick={(dateStr) => setDayDetail(dateStr)}
+              />
             </div>
           )}
 
-          <div>
-            <h3 className="text-sm font-semibold mb-2" style={{ color: PRIMARY_DARK }}>
-              Lista wykonanych ({liczba})
-            </h3>
-            <UpcomingList entries={done} done onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
-          </div>
+          {monthEntries.length === 0 ? (
+            <div className="rounded-xl p-8 text-center text-sm" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+              Brak wykonanych zleceń w tym miesiącu.
+            </div>
+          ) : (
+            <UpcomingList entries={monthEntries} done onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} onMarkDone={onMarkDone} onMove={onMove} onJumpToMonth={onJumpToMonth} />
+          )}
         </>
       )}
 
@@ -2814,6 +2835,14 @@ function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
 
 function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }) {
   const [expanded, setExpanded] = useState(null); // "monthIdx-klient" | null
+  const [monthIdx, setMonthIdx] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() === year ? now.getMonth() : 0;
+  });
+
+  const activeMonth = data.months.find((m) => m.monthIdx === monthIdx) || null;
+  const monthClients = activeMonth ? activeMonth.clients : [];
+  const monthCount = monthClients.reduce((s, c) => s + c.count, 0);
 
   return (
     <div className="space-y-6">
@@ -2831,36 +2860,58 @@ function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }
           Brak zleceń oznaczonych „Potrzebna Faktura VAT" w {year} roku.
         </div>
       ) : (
-        <InvoicesSection months={data.months} totalCount={data.totalCount} onEdit={onEdit} onToggleInvoice={onToggleInvoice} onSetPaymentStatus={onSetPaymentStatus} expanded={expanded} setExpanded={setExpanded} />
+        <InvoicesSection
+          monthIdx={monthIdx}
+          onPrevMonth={() => setMonthIdx((m) => Math.max(0, m - 1))}
+          onNextMonth={() => setMonthIdx((m) => Math.min(11, m + 1))}
+          clients={monthClients}
+          monthCount={monthCount}
+          onEdit={onEdit}
+          onToggleInvoice={onToggleInvoice}
+          onSetPaymentStatus={onSetPaymentStatus}
+          expanded={expanded}
+          setExpanded={setExpanded}
+        />
       )}
     </div>
   );
 }
 
-function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, onSetPaymentStatus, expanded, setExpanded }) {
+function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCount, onEdit, onToggleInvoice, onSetPaymentStatus, expanded, setExpanded }) {
   return (
     <div className="rounded-xl" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
-      <div className="px-4 py-3 border-b flex items-center gap-2 rounded-t-xl" style={{ borderColor: LINE_COLOR }}>
+      <div className="px-4 py-3 border-b flex items-center gap-2 rounded-t-xl flex-wrap" style={{ borderColor: LINE_COLOR }}>
         <Receipt size={16} color={GOLD} />
         <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
-          Faktury VAT <span style={{ color: "#8CA098", fontWeight: 400 }}>({totalCount} {totalCount === 1 ? "zlecenie" : "zleceń"})</span>
+          Faktury VAT <span style={{ color: "#8CA098", fontWeight: 400 }}>({monthCount} {monthCount === 1 ? "zlecenie" : "zleceń"})</span>
         </h3>
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={onPrevMonth} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={15} color={PRIMARY_DARK} />
+          </button>
+          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+          <button onClick={onNextMonth} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={15} color={PRIMARY_DARK} />
+          </button>
+        </div>
       </div>
-      <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-        {months.map((m) => (
-          <div key={m.monthIdx}>
-            <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ background: "#FAFBFA", color: "#5B6E67" }}>
-              {m.monthName}
-            </div>
-            {m.clients.map((c) => {
-              const key = `${m.monthIdx}-${c.klient}`;
+      {clients.length === 0 ? (
+        <div className="px-4 py-10 text-center text-sm" style={{ color: "#8CA098" }}>
+          Brak faktur w tym miesiącu.
+        </div>
+      ) : (
+      <div style={{ borderColor: LINE_COLOR }}>
+        <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+            {clients.map((c, cIdx) => {
+              const key = `${monthIdx}-${c.klient}`;
               const isExpanded = expanded === key;
               const allIssued = c.issuedCount === c.count;
               const noneIssued = c.issuedCount === 0;
               const paymentStatuses = new Set(c.entries.map((e) => e.status || ""));
               const uniformStatus = paymentStatuses.size === 1 ? c.entries[0].status : null;
+              const zebraBg = cIdx % 2 === 1 ? "#F4F6F2" : "transparent";
               return (
-                <div key={key}>
+                <div key={key} style={{ background: zebraBg }}>
                   <div
                     onClick={() => setExpanded(isExpanded ? null : key)}
                     role="button"
@@ -2898,11 +2949,11 @@ function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, onSetPay
                   </div>
                   {isExpanded && (
                     <div className="pl-4 pb-2">
-                      {c.entries.sort(compareEntries).map((e) => (
+                      {c.entries.sort(compareEntries).map((e, eIdx) => (
                         <div
                           key={e.id}
                           className="flex items-center gap-3 px-4 py-1.5 text-xs rounded-lg flex-wrap"
-                          style={{ color: "#5B6E67" }}
+                          style={{ color: "#5B6E67", borderTop: eIdx > 0 ? `1px dashed ${LINE_COLOR}` : "none" }}
                         >
                           <button onClick={() => onEdit && onEdit(e)} className="flex items-center gap-3 flex-1 min-w-[100px] text-left hover:opacity-70 transition overflow-hidden">
                             <span style={{ fontFamily: MONO_FONT, minWidth: 44, flexShrink: 0 }}>{e.data.slice(8, 10)}.{e.data.slice(5, 7)}</span>
@@ -2919,8 +2970,8 @@ function InvoicesSection({ months, totalCount, onEdit, onToggleInvoice, onSetPay
               );
             })}
           </div>
-        ))}
       </div>
+      )}
     </div>
   );
 }
