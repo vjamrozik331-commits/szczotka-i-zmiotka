@@ -1887,13 +1887,13 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
 /* ------------------------------------------------------------------ */
 /* KPI Card                                                             */
 /* ------------------------------------------------------------------ */
-function KpiCard({ icon: Icon, label, value, accent, onClick }) {
+function KpiCard({ icon: Icon, label, value, accent, onClick, active }) {
   const clickable = !!onClick;
   return (
     <div
       onClick={onClick}
       className={`rounded-xl p-3.5 flex-1 min-w-[130px] transition ${clickable ? "cursor-pointer hover:shadow-sm hover:-translate-y-0.5" : ""}`}
-      style={{ background: SURFACE, border: `1px solid ${clickable ? "#2A5C8A55" : LINE_COLOR}` }}
+      style={{ background: active ? `${accent || PRIMARY}11` : SURFACE, border: `${active ? "1.5px" : "1px"} solid ${active ? (accent || PRIMARY) : clickable ? "#2A5C8A55" : LINE_COLOR}` }}
     >
       <div className="flex items-center gap-1.5 mb-1.5" style={{ color: "#5B6E67" }}>
         <Icon size={13} />
@@ -2839,9 +2839,14 @@ function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }
     const now = new Date();
     return now.getFullYear() === year ? now.getMonth() : 0;
   });
+  const [filterMode, setFilterMode] = useState("pending"); // "pending" | "issued"
 
   const activeMonth = data.months.find((m) => m.monthIdx === monthIdx) || null;
-  const monthClients = activeMonth ? activeMonth.clients : [];
+  const allMonthClients = activeMonth ? activeMonth.clients : [];
+  const monthClients = allMonthClients.filter((c) => {
+    const allIssued = c.issuedCount === c.count;
+    return filterMode === "issued" ? allIssued : !allIssued;
+  });
   const monthCount = monthClients.reduce((s, c) => s + c.count, 0);
 
   return (
@@ -2851,8 +2856,12 @@ function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }
       </h2>
 
       <div className="flex gap-3 flex-wrap">
-        <KpiCard icon={Receipt} label="Do wystawienia" value={`${data.pendingCount} · ${fmtPLN(data.pendingValue)}`} accent={GOLD} />
-        <KpiCard icon={CheckCircle2} label="Wystawione" value={`${data.issuedCount} · ${fmtPLN(data.issuedValue)}`} accent={PRIMARY_DARK} />
+        <button onClick={() => setFilterMode("pending")} className="text-left">
+          <KpiCard icon={Receipt} label="Do wystawienia" value={`${data.pendingCount} · ${fmtPLN(data.pendingValue)}`} accent={GOLD} active={filterMode === "pending"} />
+        </button>
+        <button onClick={() => setFilterMode("issued")} className="text-left">
+          <KpiCard icon={CheckCircle2} label="Wystawione" value={`${data.issuedCount} · ${fmtPLN(data.issuedValue)}`} accent={PRIMARY_DARK} active={filterMode === "issued"} />
+        </button>
       </div>
 
       {data.months.length === 0 ? (
@@ -2866,6 +2875,7 @@ function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }
           onNextMonth={() => setMonthIdx((m) => Math.min(11, m + 1))}
           clients={monthClients}
           monthCount={monthCount}
+          filterMode={filterMode}
           onEdit={onEdit}
           onToggleInvoice={onToggleInvoice}
           onSetPaymentStatus={onSetPaymentStatus}
@@ -2877,13 +2887,14 @@ function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }
   );
 }
 
-function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCount, onEdit, onToggleInvoice, onSetPaymentStatus, expanded, setExpanded }) {
+function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCount, filterMode, onEdit, onToggleInvoice, onSetPaymentStatus, expanded, setExpanded }) {
+  const sectionLabel = filterMode === "issued" ? "Wystawione" : "Do wystawienia";
   return (
     <div className="rounded-xl" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
       <div className="px-4 py-3 border-b flex items-center gap-2 rounded-t-xl flex-wrap" style={{ borderColor: LINE_COLOR }}>
         <Receipt size={16} color={GOLD} />
         <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
-          Faktury VAT <span style={{ color: "#8CA098", fontWeight: 400 }}>({monthCount} {monthCount === 1 ? "zlecenie" : "zleceń"})</span>
+          {sectionLabel} <span style={{ color: "#8CA098", fontWeight: 400 }}>({monthCount} {monthCount === 1 ? "zlecenie" : "zleceń"})</span>
         </h3>
         <div className="flex items-center gap-2 ml-auto">
           <button onClick={onPrevMonth} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
@@ -2897,7 +2908,7 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
       </div>
       {clients.length === 0 ? (
         <div className="px-4 py-10 text-center text-sm" style={{ color: "#8CA098" }}>
-          Brak faktur w tym miesiącu.
+          {filterMode === "issued" ? "Brak wystawionych faktur w tym miesiącu." : "Brak faktur do wystawienia w tym miesiącu."}
         </div>
       ) : (
       <div style={{ borderColor: LINE_COLOR }}>
