@@ -1955,59 +1955,6 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
 
       {!isYearSearch && <CalendarStrip cells={calendarCells} onDayClick={(dateStr) => setDayDetail(dateStr)} />}
 
-      {!isYearSearch && freeDays.length > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
-          <div className="px-4 py-3 border-b flex items-center gap-1.5" style={{ borderColor: LINE_COLOR }}>
-            <Umbrella size={13} color="#8A6A1F" />
-            <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#8A6A1F" }}>Dni wolne w tym miesiącu</h3>
-          </div>
-          <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-            {groupConsecutiveFreeDays(freeDays).map((g) => {
-              const isRange = g.startDate !== g.endDate;
-              return (
-                <div key={g.ids[0]} className="px-4 py-3">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex-shrink-0" style={{ minWidth: isRange ? 100 : 80 }}>
-                      {isRange ? (
-                        <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", whiteSpace: "nowrap" }}>
-                          {g.startDate.slice(8, 10)}.{g.startDate.slice(5, 7)}–{g.endDate.slice(8, 10)}.{g.endDate.slice(5, 7)}
-                        </div>
-                      ) : (
-                        <>
-                          <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F" }}>
-                            {g.startDate.slice(8, 10)}.{g.startDate.slice(5, 7)}
-                          </div>
-                          <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>
-                            {weekdayName(g.startDate)}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-[120px] text-sm font-medium truncate" style={{ color: INK }}>{g.opis || "—"}</div>
-                    {isRange && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
-                        {g.ids.length} dni
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <button onClick={() => onMoveFreeDay(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                      <Move size={14} color="#2A5C8A" />
-                    </button>
-                    <button onClick={() => onEditFreeDay(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                      <Pencil size={14} color="#5B6E67" />
-                    </button>
-                    <button onClick={() => onRemoveFreeDay(g.ids)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
-                      <Trash2 size={14} color={CORAL} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {detail && (
         <KpiDetailModal
           type={detail}
