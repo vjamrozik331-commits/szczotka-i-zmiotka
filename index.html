@@ -1774,111 +1774,75 @@ function TabBar({ activeTab, view, year, onSelectMonth, yearData }) {
 }
 
 function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, onAddClient, onAddPurchase, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
+  const btnCls = "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 sm:px-4 py-2 rounded-lg text-[9px] sm:text-sm font-semibold transition hover:opacity-90 text-center leading-tight";
+  const Badge = ({ count, activeBg, inactiveBg }) => count > 0 ? (
+    <span
+      className="text-[8px] sm:text-[10px] font-bold rounded-full px-1 sm:px-1.5 py-0 sm:py-0.5 absolute top-0.5 right-1 sm:static"
+      style={{ background: activeBg, color: "white" }}
+    >
+      {count}
+    </span>
+  ) : null;
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-        <button
-          onClick={onAddClient}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 flex-shrink-0"
-          style={{ background: PRIMARY }}
-        >
-          <Users size={15} /> Zaplanuj zlecenie
+      <div className="grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+        <button onClick={onAddClient} className={btnCls} style={{ background: PRIMARY, color: "white", border: "none" }}>
+          <Users size={16} />
+          <span className="hidden sm:inline">Zaplanuj zlecenie</span>
+          <span className="sm:hidden">Zlecenie</span>
         </button>
-        <button
-          onClick={onAddPurchase}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 flex-shrink-0"
-          style={{ background: CORAL }}
-        >
-          <Receipt size={15} /> Zakupy
+        <button onClick={onAddPurchase} className={btnCls} style={{ background: CORAL, color: "white", border: "none" }}>
+          <Receipt size={16} />
+          <span className="hidden sm:inline">Zakupy</span>
+          <span className="sm:hidden">Zakupy</span>
         </button>
-        <button
-          onClick={onAddPrivate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border flex-shrink-0"
-          style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, borderColor: "#CECBF6" }}
-        >
-          <Clock size={15} /> Termin prywatny
+        <button onClick={onAddPrivate} className={btnCls} style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, border: "1px solid #CECBF6" }}>
+          <Clock size={16} />
+          <span className="hidden sm:inline">Termin prywatny</span>
+          <span className="sm:hidden">Prywatny</span>
         </button>
-        <button
-          onClick={onAddFreeDay}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition hover:opacity-90 border flex-shrink-0"
-          style={{ background: "#FDF6E9", color: "#8A6A1F", borderColor: "#EED9A8" }}
-        >
-          <Umbrella size={15} /> Dzień wolny
+        <button onClick={onAddFreeDay} className={btnCls} style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
+          <Umbrella size={16} />
+          <span className="hidden sm:inline">Dzień wolny</span>
+          <span className="sm:hidden">Wolne</span>
         </button>
-        <span className="w-px my-1" style={{ background: LINE_COLOR }} />
-        <button
-          onClick={onGoClients}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
-          style={{ background: view === "clients" ? PRIMARY_DARK : "#F0EDE6", color: view === "clients" ? "white" : "#6B5D4A" }}
-        >
-          <Users size={14} /> Baza klientów
+        <button onClick={onGoClients} className={btnCls} style={{ background: view === "clients" ? PRIMARY_DARK : "#F0EDE6", color: view === "clients" ? "white" : "#6B5D4A", border: "none" }}>
+          <Users size={16} />
+          <span className="hidden sm:inline">Baza klientów</span>
+          <span className="sm:hidden">Klienci</span>
         </button>
-        <button
-          onClick={onGoUpcoming}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
-          style={{ background: view === "upcoming" ? PRIMARY_DARK : "#EAF1F8", color: view === "upcoming" ? "white" : "#2A5C8A" }}
-        >
-          <CalendarClock size={14} /> Zaplanowane
-          {upcomingCount > 0 && (
-            <span
-              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
-              style={{ background: view === "upcoming" ? "rgba(255,255,255,0.25)" : "#2A5C8A", color: "white" }}
-            >
-              {upcomingCount}
-            </span>
-          )}
+
+        <span className="hidden sm:block w-px my-1" style={{ background: LINE_COLOR }} />
+
+        <button onClick={onGoUpcoming} className={btnCls} style={{ background: view === "upcoming" ? PRIMARY_DARK : "#EAF1F8", color: view === "upcoming" ? "white" : "#2A5C8A", border: "none" }}>
+          <CalendarClock size={16} />
+          <span>Zaplanowane</span>
+          <Badge count={upcomingCount} activeBg={view === "upcoming" ? "rgba(255,255,255,0.25)" : "#2A5C8A"} />
         </button>
         {completedCount > 0 && (
-          <button
-            onClick={onGoCompleted}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
-            style={{ background: view === "wykonane" ? PRIMARY_DARK : MINT, color: view === "wykonane" ? "white" : PRIMARY_DARK }}
-          >
-            <CheckCircle2 size={14} /> Wykonane
-            <span
-              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
-              style={{ background: view === "wykonane" ? "rgba(255,255,255,0.25)" : PRIMARY_DARK, color: "white" }}
-            >
-              {completedCount}
-            </span>
+          <button onClick={onGoCompleted} className={btnCls} style={{ background: view === "wykonane" ? PRIMARY_DARK : MINT, color: view === "wykonane" ? "white" : PRIMARY_DARK, border: "none" }}>
+            <CheckCircle2 size={16} />
+            <span>Wykonane</span>
+            <Badge count={completedCount} activeBg={view === "wykonane" ? "rgba(255,255,255,0.25)" : PRIMARY_DARK} />
           </button>
         )}
         {invoicesCount > 0 && (
-          <button
-            onClick={onGoFaktury}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
-            style={{ background: view === "faktury" ? GOLD : "#FDF3E0", color: view === "faktury" ? "white" : GOLD }}
-          >
-            <Receipt size={14} /> Faktury
-            <span
-              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
-              style={{ background: view === "faktury" ? "rgba(255,255,255,0.25)" : GOLD, color: "white" }}
-            >
-              {invoicesCount}
-            </span>
+          <button onClick={onGoFaktury} className={btnCls} style={{ background: view === "faktury" ? GOLD : "#FDF3E0", color: view === "faktury" ? "white" : GOLD, border: "none" }}>
+            <Receipt size={16} />
+            <span>Faktury</span>
+            <Badge count={invoicesCount} activeBg={view === "faktury" ? "rgba(255,255,255,0.25)" : GOLD} />
           </button>
         )}
         {overdueCount > 0 && (
-          <button
-            onClick={onGoOverdue}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
-            style={{ background: view === "overdue" ? CORAL : "#FCE9E7", color: view === "overdue" ? "white" : CORAL }}
-          >
-            <AlertTriangle size={14} /> Zaległe
-            <span
-              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
-              style={{ background: view === "overdue" ? "rgba(255,255,255,0.25)" : CORAL, color: "white" }}
-            >
-              {overdueCount}
-            </span>
+          <button onClick={onGoOverdue} className={btnCls} style={{ background: view === "overdue" ? CORAL : "#FCE9E7", color: view === "overdue" ? "white" : CORAL, border: "none" }}>
+            <AlertTriangle size={16} />
+            <span>Zaległe</span>
+            <Badge count={overdueCount} activeBg={view === "overdue" ? "rgba(255,255,255,0.25)" : CORAL} />
           </button>
         )}
-        <button
-          onClick={onGoSummary}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-shrink-0"
-          style={{ background: view === "summary" ? PRIMARY_DARK : MINT, color: view === "summary" ? "white" : PRIMARY_DARK }}
-        >
-          <TrendingUp size={14} /> Podsumowanie
+        <button onClick={onGoSummary} className={btnCls} style={{ background: view === "summary" ? PRIMARY_DARK : MINT, color: view === "summary" ? "white" : PRIMARY_DARK, border: "none" }}>
+          <TrendingUp size={16} />
+          <span>Podsumowanie</span>
         </button>
       </div>
     </div>
