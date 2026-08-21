@@ -1423,6 +1423,7 @@ function App() {
         {view === "upcoming" && (
           <UpcomingView
             data={upcomingData}
+            year={year}
             entries={entries}
             onEdit={openEditForm}
             onDelete={deleteEntry}
@@ -2393,7 +2394,7 @@ function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onM
   );
 }
 
-function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
+function UpcomingView({ data, year, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const { overdue, upcoming, zarobkiPlanowane, liczba, next7count } = data;
   const isEmpty = overdue.length === 0 && upcoming.length === 0;
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
@@ -2428,7 +2429,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone
   return (
     <div className="space-y-6">
       <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
-        Nadchodzące zlecenia
+        Nadchodzące zlecenia <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{activeGroup ? activeGroup.year : year}</span>
       </h2>
 
       <div className="flex gap-3 flex-wrap">
@@ -2453,7 +2454,7 @@ function UpcomingView({ data, entries, onEdit, onDelete, onSetStatus, onMarkDone
                 <ChevronLeft size={15} color={PRIMARY_DARK} />
               </button>
               <span className="text-sm font-semibold min-w-[130px] text-center" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>
-                {activeGroup ? `${MONTH_NAMES[activeGroup.month]} ${activeGroup.year}` : "—"}
+                {activeGroup ? MONTH_NAMES[activeGroup.month] : "—"}
               </span>
               <button onClick={() => setActiveKey(monthGroups[Math.min(monthGroups.length - 1, activeIdx + 1)].key)} disabled={activeIdx >= monthGroups.length - 1} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
                 <ChevronRight size={15} color={PRIMARY_DARK} />
