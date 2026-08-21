@@ -1857,14 +1857,18 @@ function KpiCard({ icon: Icon, label, value, accent, onClick, active }) {
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl p-3.5 flex-1 min-w-[130px] transition ${clickable ? "cursor-pointer hover:shadow-sm hover:-translate-y-0.5" : ""}`}
+      className={`rounded-lg sm:rounded-xl p-2 sm:p-3.5 min-w-0 sm:flex-1 sm:min-w-[130px] transition ${clickable ? "cursor-pointer hover:shadow-sm sm:hover:-translate-y-0.5" : ""}`}
       style={{ background: active ? `${accent || PRIMARY}11` : SURFACE, border: `${active ? "1.5px" : "1px"} solid ${active ? (accent || PRIMARY) : clickable ? "#2A5C8A55" : LINE_COLOR}` }}
     >
-      <div className="flex items-center gap-1.5 mb-1.5" style={{ color: "#5B6E67" }}>
-        <Icon size={13} />
-        <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
+      <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-1.5" style={{ color: "#5B6E67" }}>
+        <Icon size={12} className="shrink-0 sm:hidden" />
+        <Icon size={13} className="shrink-0 hidden sm:block" />
+        <span className="text-[8px] sm:text-[11px] font-medium uppercase tracking-wide leading-tight truncate">{label}</span>
       </div>
-      <div style={{ fontFamily: MONO_FONT, fontWeight: 600, fontSize: "1.05rem", color: accent || INK }}>
+      <div className="sm:hidden leading-tight whitespace-normal" style={{ fontFamily: MONO_FONT, fontWeight: 600, fontSize: "0.72rem", color: accent || INK }}>
+        {value}
+      </div>
+      <div className="hidden sm:block leading-tight" style={{ fontFamily: MONO_FONT, fontWeight: 600, fontSize: "1.05rem", color: accent || INK }}>
         {value}
       </div>
     </div>
@@ -1890,7 +1894,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
         {monthName} <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
       </h2>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
         <KpiCard icon={Wallet} label="Zlecenia wykonane" value={`${summary.liczbaZlecen} · ${fmtPLN(summary.zarobki)}`} accent={PRIMARY_DARK} onClick={() => setDetail("zarobki")} />
         {summary.zaplanowaneLiczba > 0 && (
           <KpiCard icon={CalendarClock} label="Zaplanowane" value={`${summary.zaplanowaneLiczba} · ${fmtPLN(summary.zaplanowaneZarobki)}`} accent="#2A5C8A" onClick={() => setDetail("zaplanowane")} />
@@ -2202,7 +2206,7 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
         <AlertTriangle size={22} /> Zaległe zlecenia
       </h2>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
         <KpiCard icon={AlertTriangle} label="Zaległe" value={overdue.length} accent={CORAL} onClick={() => setDetail("zalegle")} />
         <KpiCard icon={Wallet} label="Wartość zaległych" value={fmtPLN(totalValue)} accent={CORAL} onClick={() => setDetail("zalegle")} />
       </div>
@@ -2292,7 +2296,7 @@ function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onM
         <CheckCircle2 size={22} /> Wykonane zlecenia <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
       </h2>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
         <KpiCard icon={CheckCircle2} label="Wykonane" value={liczba} accent={PRIMARY_DARK} />
         <KpiCard icon={Wallet} label="Przychód" value={fmtPLN(zarobki)} accent={PRIMARY_DARK} />
       </div>
@@ -2396,7 +2400,7 @@ function UpcomingView({ data, year, entries, onEdit, onDelete, onSetStatus, onMa
         Nadchodzące zlecenia <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{activeGroup ? activeGroup.year : year}</span>
       </h2>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
         <KpiCard icon={CalendarClock} label="Zaplanowane" value={liczba} accent="#2A5C8A" onClick={() => setDetail("zaplanowane")} />
         <KpiCard icon={Wallet} label="Spodziewany przychód" value={fmtPLN(zarobkiPlanowane)} accent="#2A5C8A" />
         <KpiCard icon={Clock} label="W ciągu 7 dni" value={next7count} />
@@ -2796,7 +2800,7 @@ function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }
         <Receipt size={22} /> Faktury VAT <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
       </h2>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
         <button onClick={() => setFilterMode("pending")} className="text-left">
           <KpiCard icon={Receipt} label="Do wystawienia" value={`${data.pendingCount} · ${fmtPLN(data.pendingValue)}`} accent={GOLD} active={filterMode === "pending"} />
         </button>
@@ -3005,7 +3009,7 @@ function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit, onToggleIn
         Podsumowanie roczne <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
       </h2>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
         <KpiCard icon={Wallet} label="Zarobki (rok)" value={fmtPLN(yearData.totalZarobki)} accent={PRIMARY_DARK} />
         <KpiCard icon={Receipt} label="Wydatki (rok)" value={fmtPLN(yearData.totalWydatki)} accent={CORAL} />
         <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(yearData.totalZysk)} accent={PRIMARY_DARK} />
