@@ -140,7 +140,7 @@ const MONTH_NAMES = ["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Li
 const WEEKDAY_LETTERS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
 const DEFAULT_YEAR = new Date().getFullYear();
 
-const CATEGORIES = ["Chemia i materiały", "Sprzęt", "Paliwo", "Marketing", "Oszczędności", "Osobiste", "Inne"];
+const CATEGORIES = ["Chemia i materiały", "Sprzęt", "Paliwo", "Marketing", "Oszczędności", "Osobiste", "ZUS", "Podatek", "Inne"];
 const CATEGORY_COLORS = {
   "Chemia i materiały": "#2A9D8F",
   "Sprzęt": "#E9C46A",
@@ -148,6 +148,8 @@ const CATEGORY_COLORS = {
   "Marketing": "#8AB17D",
   "Oszczędności": "#4A7C9E",
   "Osobiste": "#7F77DD",
+  "ZUS": "#B23A2E",
+  "Podatek": "#8A6A1F",
   "Inne": "#6B7280",
 };
 const PRIVATE_PURPLE = "#534AB7";
@@ -1793,8 +1795,8 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         </button>
         <button onClick={onAddPurchase} className={btnCls} style={{ background: CORAL, color: "white", border: "none" }}>
           <Receipt size={16} />
-          <span className="hidden sm:inline">Zakupy</span>
-          <span className="sm:hidden">Zakupy</span>
+          <span className="hidden sm:inline">Wydatki</span>
+          <span className="sm:hidden">Wydatki</span>
         </button>
         <button onClick={onAddPrivate} className={btnCls} style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, border: "1px solid #CECBF6" }}>
           <Clock size={16} />
@@ -3167,7 +3169,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
   const showKlientFields = formType === "klient" || formType === "full";
   const showZakupFields = formType === "zakup" || formType === "full";
   const showPrivateFields = formType === "prywatne";
-  const titles = { klient: "Zaplanuj zlecenie", zakup: "Nowe zakupy", full: "Edytuj wpis", prywatne: "Termin prywatny" };
+  const titles = { klient: "Zaplanuj zlecenie", zakup: "Nowy wydatek", full: "Edytuj wpis", prywatne: "Termin prywatny" };
   const accentColor = formType === "zakup" ? CORAL : formType === "prywatne" ? PRIVATE_PURPLE : PRIMARY;
   const isKnownClientName = form.klient && knownClients.list.some((c) => c.name === form.klient);
   const [showNewClientInput, setShowNewClientInput] = useState(!!form.klient && !isKnownClientName);
@@ -3177,7 +3179,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
       <div className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
         <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b" style={{ background: SURFACE, borderColor: LINE_COLOR }}>
           <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.15rem", fontWeight: 600, color: PRIMARY_DARK }}>
-            {isEditing ? (formType === "full" ? "Edytuj wpis" : formType === "zakup" ? "Edytuj zakup" : formType === "prywatne" ? "Edytuj termin prywatny" : "Edytuj zlecenie") : titles[formType]}
+            {isEditing ? (formType === "full" ? "Edytuj wpis" : formType === "zakup" ? "Edytuj wydatek" : formType === "prywatne" ? "Edytuj termin prywatny" : "Edytuj zlecenie") : titles[formType]}
           </h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
@@ -3382,7 +3384,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
               {formType === "full" && (
                 <div className="flex items-center gap-2 pt-2">
                   <Receipt size={14} color={CORAL} />
-                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: CORAL }}>Zakupy</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: CORAL }}>Wydatki</span>
                   <span className="flex-1 h-px" style={{ background: LINE_COLOR }} />
                 </div>
               )}
@@ -3426,7 +3428,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
             style={{ background: accentColor }}
           >
-            {isEditing ? "Zapisz zmiany" : formType === "zakup" ? "Dodaj zakup" : formType === "prywatne" ? "Dodaj termin" : "Zaplanuj zlecenie"}
+            {isEditing ? "Zapisz zmiany" : formType === "zakup" ? "Dodaj wydatek" : formType === "prywatne" ? "Dodaj termin" : "Zaplanuj zlecenie"}
           </button>
         </div>
       </div>
