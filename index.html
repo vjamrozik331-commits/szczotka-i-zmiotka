@@ -2018,6 +2018,7 @@ function CalendarStrip({ cells, onDayClick }) {
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: PRIVATE_PURPLE }} /> prywatne</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#FDF6E9", border: "1px solid #EED9A8" }} /> wolne</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: "#E0665A" }} /> święto</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ border: `2px solid ${PRIMARY_DARK}` }} /> dziś</span>
       </div>
       <div className="grid grid-cols-7 gap-1.5 mb-1.5">
         {WEEKDAY_LETTERS.map((w) => (
@@ -2041,6 +2042,7 @@ function CalendarStrip({ cells, onDayClick }) {
           const isSunday = new Date(cell.dateStr + "T00:00:00").getDay() === 0;
           const isSaturday = new Date(cell.dateStr + "T00:00:00").getDay() === 6;
           const isRedDay = !!holidayName || isSunday;
+          const isToday = cell.dateStr === todayStr();
           return (
             <button
               key={idx}
@@ -2054,13 +2056,23 @@ function CalendarStrip({ cells, onDayClick }) {
                   : isFree
                   ? "#FDF6E9"
                   : isRedDay ? "#FBEAE7" : isSaturday ? "#F0EDE6" : "#FAFBFA",
-                border: isPlannedOnly ? "1px dashed #2A5C8A" : isFree ? "1px solid #EED9A8" : holidayName ? "1.5px solid #E0665A" : allCancelled ? "1px solid #E5E7EB" : "1px solid transparent",
+                border: isToday ? `2.5px solid ${PRIMARY_DARK}` : isPlannedOnly ? "1px dashed #2A5C8A" : isFree ? "1px solid #EED9A8" : holidayName ? "1.5px solid #E0665A" : allCancelled ? "1px solid #E5E7EB" : "1px solid transparent",
                 color: doneEntries.length && intensity > 0.5 ? "white" : isPlannedOnly ? "#2A5C8A" : isFree ? "#8A6A1F" : isRedDay ? "#B23A2E" : allCancelled ? "#B0B8B5" : INK,
                 ringColor: PRIMARY,
               }}
               title={holidayName ? `Święto: ${holidayName}${cell.freeDay ? " (oznaczone jako wolne)" : ""}` : cell.freeDay ? `Wolne${cell.freeDay.opis ? ": " + cell.freeDay.opis : ""}` : cell.entries.length ? `${cell.entries.length} wpis(ów)` : "Dodaj wpis"}
             >
-              <span style={{ fontFamily: MONO_FONT, fontWeight: 500, textDecoration: allCancelled ? "line-through" : "none" }}>{cell.day}</span>
+              <span
+                style={{
+                  fontFamily: MONO_FONT,
+                  fontWeight: isToday ? 800 : 500,
+                  textDecoration: allCancelled ? "line-through" : "none",
+                  borderBottom: isToday ? `2px solid ${doneEntries.length && intensity > 0.5 ? "white" : PRIMARY_DARK}` : "none",
+                  paddingBottom: isToday ? 1 : 0,
+                }}
+              >
+                {cell.day}
+              </span>
               <span className="absolute bottom-1 flex items-center gap-0.5">
                 {hasExpense && <span className="w-1 h-1 rounded-full" style={{ background: CORAL }} />}
                 {hasPrivate && <span className="w-1 h-1 rounded-full" style={{ background: PRIVATE_PURPLE }} />}
@@ -2540,10 +2552,12 @@ function MiniMonthCalendar({ year, month, entries, onDayClick, tone = "planned" 
               className="aspect-square rounded-md flex items-center justify-center text-[11px] transition hover:opacity-70"
               style={{
                 background: isOverdue ? "#FDECEA" : doneStyle ? "rgba(31,110,92,0.12)" : hasEntries ? "#EAF1F8" : "transparent",
-                border: isOverdue ? "1px dashed #E0665A" : doneStyle ? "1px solid rgba(31,110,92,0.4)" : hasEntries ? "1px dashed #2A5C8A" : holidayName ? "1px solid #E0665A" : isToday ? "1px solid #2A5C8A" : "1px solid transparent",
-                color: isOverdue ? CORAL : doneStyle ? PRIMARY_DARK : hasEntries ? "#2A5C8A" : holidayName ? "#B23A2E" : isToday ? "#2A5C8A" : "#B0B8B5",
+                border: isToday ? `2.5px solid ${PRIMARY_DARK}` : isOverdue ? "1px dashed #E0665A" : doneStyle ? "1px solid rgba(31,110,92,0.4)" : hasEntries ? "1px dashed #2A5C8A" : holidayName ? "1px solid #E0665A" : "1px solid transparent",
+                color: isOverdue ? CORAL : doneStyle ? PRIMARY_DARK : hasEntries ? "#2A5C8A" : holidayName ? "#B23A2E" : isToday ? PRIMARY_DARK : "#B0B8B5",
                 fontFamily: MONO_FONT,
-                fontWeight: hasEntries || isToday || holidayName ? 600 : 400,
+                fontWeight: hasEntries || isToday || holidayName ? 700 : 400,
+                textDecoration: isToday ? "underline" : "none",
+                textUnderlineOffset: "2px",
                 cursor: "pointer",
               }}
               title={holidayName ? `Święto: ${holidayName}` : hasEntries ? `${cell.entries.length} ${tone === "done" ? "wykonane" : "zaplanowane"}` : "Kliknij, żeby zaplanować zlecenie"}

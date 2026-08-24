@@ -216,6 +216,8 @@
   .cal-cell.has-bookings::after{content:""; position:absolute; bottom:5px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:var(--coral);}
   .cal-cell.past{background:transparent; color:#DCE4E0; cursor:not-allowed;}
   .cal-cell.selected{background:var(--coral); color:#fff;}
+  .cal-cell.today{box-shadow:inset 0 0 0 2.5px var(--primary); font-weight:800; text-decoration:underline; text-underline-offset:2px;}
+  .cal-cell.today.selected{box-shadow:none;}
   .cal-legend{display:flex; gap:16px; margin-top:16px; flex-wrap:wrap;}
   .cal-legend span{font-size:0.78rem; color:#5C766C; display:flex; align-items:center; gap:6px;}
   .cal-legend .dot{width:9px; height:9px; border-radius:3px; display:inline-block;}
@@ -786,6 +788,7 @@
         if (slotsByDate[key] && slotsByDate[key].length > 0) cls += " has-bookings";
       }
       if (key === selectedDate) cls += " selected";
+      if (key === todayStr) cls += " today";
       const titleAttr = holidayName ? ` title="${holidayName}"` : "";
       html += `<button type="button" class="${cls}" data-date="${key}" ${clickable ? "" : "disabled"}${titleAttr}>${d}</button>`;
     }
