@@ -868,7 +868,8 @@ function App() {
     const zeStrony = all.filter((e) => e.zrodloRezerwacji === "www" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
     const oczekujacePlatnosci = all.filter((e) => e.statusZlecenia === "Wykonane" && e.status === "Oczekuje" && Number(e.zarobki) > 0 && !e.fakturaVat).sort(compareEntries);
     const fakturyDoWystawienia = all.filter((e) => e.fakturaVat && !e.fakturaWystawiona && e.statusZlecenia !== "Odwołane").sort(compareEntries);
-    return { zarobki, wydatki, zaplanowane, zalegle, prywatne, zeStrony, oczekujacePlatnosci, fakturyDoWystawienia };
+    const fakturyNiezaplacone = all.filter((e) => e.fakturaVat && e.fakturaWystawiona && e.status === "Oczekuje" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
+    return { zarobki, wydatki, zaplanowane, zalegle, prywatne, zeStrony, oczekujacePlatnosci, fakturyDoWystawienia, fakturyNiezaplacone };
   }, [entries, activeTab, year]);
 
   const knownClients = useMemo(() => {
@@ -1921,6 +1922,9 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
         )}
         {detailLists.fakturyDoWystawienia.length > 0 && (
           <KpiCard icon={Receipt} label="Faktury do wystawienia" value={detailLists.fakturyDoWystawienia.length} accent="#8A6A1F" onClick={() => setDetail("fakturyDoWystawienia")} />
+        )}
+        {detailLists.fakturyNiezaplacone.length > 0 && (
+          <KpiCard icon={AlertTriangle} label="Faktury oczekujące płatności" value={detailLists.fakturyNiezaplacone.length} accent="#2A5C8A" onClick={() => setDetail("fakturyNiezaplacone")} />
         )}
       </div>
 
@@ -3460,6 +3464,7 @@ const DETAIL_CONFIG = {
   zeStrony: { title: "Zapisy ze strony WWW", icon: Globe, color: "#1F8A70", empty: "Brak zapisów ze strony WWW w tym miesiącu." },
   oczekujacePlatnosci: { title: "Oczekujące płatności", icon: AlertTriangle, color: CORAL, empty: "Brak oczekujących płatności w tym miesiącu." },
   fakturyDoWystawienia: { title: "Faktury do wystawienia", icon: Receipt, color: "#8A6A1F", empty: "Brak faktur do wystawienia w tym miesiącu." },
+  fakturyNiezaplacone: { title: "Faktury oczekujące płatności", icon: AlertTriangle, color: "#2A5C8A", empty: "Brak niezapłaconych faktur w tym miesiącu." },
 };
 
 const ORDER_STATUS_BADGE = {
@@ -3665,7 +3670,7 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                       </div>
                     </div>
                     <div className="flex items-center gap-1 mt-2">
-                      {type === "oczekujacePlatnosci" && onSetPaymentStatus && (
+                      {(type === "oczekujacePlatnosci" || type === "fakturyNiezaplacone") && onSetPaymentStatus && (
                         <button onClick={() => onSetPaymentStatus(e.id, "Zapłacono")} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako zapłacone">
                           <CheckCircle2 size={15} color={PRIMARY} />
                         </button>
