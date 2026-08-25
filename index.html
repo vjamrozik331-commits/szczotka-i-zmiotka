@@ -1918,7 +1918,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
           <KpiCard icon={Globe} label="Zapisy ze strony WWW" value={detailLists.zeStrony.length} accent="#1F8A70" onClick={() => setDetail("zeStrony")} />
         )}
         {detailLists.oczekujacePlatnosci.length > 0 && (
-          <KpiCard icon={AlertTriangle} label="Oczekujące płatności" value={detailLists.oczekujacePlatnosci.length} accent={CORAL} onClick={() => setDetail("oczekujacePlatnosci")} />
+          <KpiCard icon={AlertTriangle} label="Płatności oczekujące" value={detailLists.oczekujacePlatnosci.length} accent={CORAL} onClick={() => setDetail("oczekujacePlatnosci")} />
         )}
         {detailLists.fakturyDoWystawienia.length > 0 && (
           <KpiCard icon={Receipt} label="Faktury do wystawienia" value={detailLists.fakturyDoWystawienia.length} accent="#8A6A1F" onClick={() => setDetail("fakturyDoWystawienia")} />
@@ -3462,7 +3462,7 @@ const DETAIL_CONFIG = {
   wolne: { title: "Dni wolne", icon: Umbrella, color: "#8A6A1F", empty: "Brak dni wolnych w tym miesiącu." },
   prywatne: { title: "Terminy prywatne", icon: Clock, color: PRIVATE_PURPLE, empty: "Brak terminów prywatnych w tym miesiącu." },
   zeStrony: { title: "Zapisy ze strony WWW", icon: Globe, color: "#1F8A70", empty: "Brak zapisów ze strony WWW w tym miesiącu." },
-  oczekujacePlatnosci: { title: "Oczekujące płatności", icon: AlertTriangle, color: CORAL, empty: "Brak oczekujących płatności w tym miesiącu." },
+  oczekujacePlatnosci: { title: "Płatności oczekujące", icon: AlertTriangle, color: CORAL, empty: "Brak oczekujących płatności w tym miesiącu." },
   fakturyDoWystawienia: { title: "Faktury do wystawienia", icon: Receipt, color: "#8A6A1F", empty: "Brak faktur do wystawienia w tym miesiącu." },
   fakturyNiezaplacone: { title: "Faktury oczekujące płatności", icon: AlertTriangle, color: "#2A5C8A", empty: "Brak niezapłaconych faktur w tym miesiącu." },
 };
