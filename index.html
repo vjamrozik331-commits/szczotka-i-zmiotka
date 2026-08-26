@@ -2901,8 +2901,8 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
                     {c.count === 1 ? (
                       <button
                         onClick={(ev) => { ev.stopPropagation(); onToggleInvoice(c.entries[0].id); }}
-                        className="flex-shrink-0 p-1.5 rounded-md border transition"
-                        style={{ borderColor: allIssued ? "#639922" : "#EF9F27", background: allIssued ? "#E4F3EC" : "#FDF6E9" }}
+                        className="flex-shrink-0 p-1.5 rounded-md border hover:bg-gray-50 transition"
+                        style={{ borderColor: LINE_COLOR }}
                         title={allIssued ? "Wystawiona — kliknij, aby cofnąć" : "Do wystawienia — kliknij, aby oznaczyć jako wystawioną"}
                       >
                         {allIssued ? <CheckCircle2 size={15} color={PRIMARY_DARK} /> : <Receipt size={15} color="#8A6A1F" />}
@@ -2946,8 +2946,8 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
                           </button>
                           <button
                             onClick={() => onToggleInvoice(e.id)}
-                            className="flex-shrink-0 p-1 rounded-md border transition"
-                            style={{ borderColor: e.fakturaWystawiona ? "#639922" : "#EF9F27", background: e.fakturaWystawiona ? "#E4F3EC" : "#FDF6E9" }}
+                            className="flex-shrink-0 p-1 rounded-md border hover:bg-gray-50 transition"
+                            style={{ borderColor: LINE_COLOR }}
                             title={e.fakturaWystawiona ? "Wystawiona — kliknij, aby cofnąć" : "Do wystawienia — kliknij, aby oznaczyć jako wystawioną"}
                           >
                             {e.fakturaWystawiona ? <CheckCircle2 size={12} color={PRIMARY_DARK} /> : <Receipt size={12} color="#8A6A1F" />}
