@@ -2899,13 +2899,21 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
                       {c.count} {c.count === 1 ? "zlecenie" : "zleceń"}
                     </div>
                     {c.count === 1 ? (
-                      <InvoiceStatusToggle issued={allIssued} onClick={(ev) => { ev.stopPropagation(); onToggleInvoice(c.entries[0].id); }} />
+                      <button
+                        onClick={(ev) => { ev.stopPropagation(); onToggleInvoice(c.entries[0].id); }}
+                        className="flex-shrink-0 p-1.5 rounded-md border transition"
+                        style={{ borderColor: allIssued ? "#639922" : "#EF9F27", background: allIssued ? "#E4F3EC" : "#FDF6E9" }}
+                        title={allIssued ? "Wystawiona — kliknij, aby cofnąć" : "Do wystawienia — kliknij, aby oznaczyć jako wystawioną"}
+                      >
+                        {allIssued ? <CheckCircle2 size={15} color={PRIMARY_DARK} /> : <Receipt size={15} color="#8A6A1F" />}
+                      </button>
                     ) : (
                       <span
                         className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
                         style={allIssued ? { background: "#E4F3EC", color: PRIMARY_DARK } : noneIssued ? { background: "#FDF6E9", color: "#8A6A1F" } : { background: "#EAF1F8", color: "#2A5C8A" }}
+                        title={allIssued ? "Wszystkie wystawione" : `${c.issuedCount}/${c.count} wystawione`}
                       >
-                        {allIssued ? <><CheckCircle2 size={11} /> Wystawione</> : <><Clock size={11} /> {c.issuedCount}/{c.count} wystawione</>}
+                        {allIssued ? <CheckCircle2 size={11} /> : <Clock size={11} />} {c.issuedCount}/{c.count}
                       </span>
                     )}
                     {c.count === 1 ? (
@@ -2936,7 +2944,14 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
                             <span className="flex-1 truncate">{e.opisUslugi || "—"}</span>
                             <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK, flexShrink: 0, whiteSpace: "nowrap" }}>{fmtPLN(Number(e.zarobki) || 0)}</span>
                           </button>
-                          <InvoiceStatusToggle issued={!!e.fakturaWystawiona} onClick={() => onToggleInvoice(e.id)} small />
+                          <button
+                            onClick={() => onToggleInvoice(e.id)}
+                            className="flex-shrink-0 p-1 rounded-md border transition"
+                            style={{ borderColor: e.fakturaWystawiona ? "#639922" : "#EF9F27", background: e.fakturaWystawiona ? "#E4F3EC" : "#FDF6E9" }}
+                            title={e.fakturaWystawiona ? "Wystawiona — kliknij, aby cofnąć" : "Do wystawienia — kliknij, aby oznaczyć jako wystawioną"}
+                          >
+                            {e.fakturaWystawiona ? <CheckCircle2 size={12} color={PRIMARY_DARK} /> : <Receipt size={12} color="#8A6A1F" />}
+                          </button>
                           <PaymentStatusMenu status={e.status} onChange={(s) => onSetPaymentStatus(e.id, s)} small />
                         </div>
                       ))}
