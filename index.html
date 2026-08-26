@@ -3033,11 +3033,6 @@ function InvoiceStatusToggle({ issued, onClick, small }) {
 }
 
 function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit, onToggleInvoice, onSetPaymentStatus }) {
-  const invoicesData = useMemo(() => computeInvoicesByYear(entries, year), [entries, year]);
-  const invoicesByMonth = invoicesData.months;
-  const totalInvoices = invoicesData.totalCount;
-  const [expanded, setExpanded] = useState(null); // "monthIdx-klient" | null
-
   return (
     <div className="space-y-6">
       <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
@@ -3119,9 +3114,7 @@ function SummaryView({ yearData, year, entries, onGoUpcoming, onEdit, onToggleIn
         </ChartCard>
       </div>
 
-      {invoicesByMonth.length > 0 && (
-        <InvoicesSection months={invoicesByMonth} totalCount={totalInvoices} onEdit={onEdit} onToggleInvoice={onToggleInvoice} onSetPaymentStatus={onSetPaymentStatus} expanded={expanded} setExpanded={setExpanded} />
-      )}
+      {/* Szczegółowa lista faktur dostępna w osobnej zakładce „Faktury” */}
 
       <MonthlyTable months={yearData.months} totals={yearData} />
     </div>
