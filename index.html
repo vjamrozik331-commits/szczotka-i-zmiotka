@@ -1149,6 +1149,27 @@ function App() {
     };
   }, [entries, activeTab, year]);
 
+  const monthInvoicesCount = useMemo(() => {
+    return (entries || []).filter(
+      (e) => e.fakturaVat && e.klient && e.klient.trim() && e.statusZlecenia !== "Odwołane"
+        && e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year
+    ).length;
+  }, [entries, activeTab, year]);
+
+  const monthPrivateCount = useMemo(() => {
+    return (entries || []).filter(
+      (e) => e.typWpisu === "prywatne" && e.statusZlecenia !== "Odwołane"
+        && e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year
+    ).length;
+  }, [entries, activeTab, year]);
+
+  const monthFreeDaysCount = useMemo(() => {
+    return groupConsecutiveFreeDays(
+      (freeDays || []).filter((d) => d.date && new Date(d.date + "T00:00:00").getMonth() === activeTab && new Date(d.date + "T00:00:00").getFullYear() === year),
+      year
+    ).length;
+  }, [freeDays, activeTab, year]);
+
   const monthDetailLists = useMemo(() => {
     const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year);
     const zarobki = all.filter((e) => isRealized(e) && Number(e.zarobki) > 0).sort(compareEntries);
@@ -1666,10 +1687,12 @@ function App() {
 
       <ActionBar
         view={view}
-        upcomingCount={upcomingData.upcoming.length + upcomingData.overdue.length}
-        overdueCount={upcomingData.overdue.length}
-        completedCount={completedData.liczba}
-        invoicesCount={invoicesData.totalCount}
+        upcomingCount={monthSummary.zaplanowaneLiczba}
+        overdueCount={monthSummary.zaległeLiczba}
+        completedCount={monthSummary.liczbaZlecen}
+        invoicesCount={monthInvoicesCount}
+        privateCount={monthPrivateCount}
+        freeDaysCount={monthFreeDaysCount}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
         onAddPrivate={() => setView("prywatne")}
@@ -2114,7 +2137,7 @@ function TabBar({ activeTab, view, year, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, onAddClient, onAddPurchase, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
+function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, privateCount, freeDaysCount, onAddClient, onAddPurchase, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
   const btnCls = "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 sm:px-4 py-2 rounded-lg text-[9px] sm:text-sm font-semibold transition hover:opacity-90 text-center leading-tight";
   const Badge = ({ count, activeBg, inactiveBg }) => count > 0 ? (
     <span
@@ -2141,11 +2164,13 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
           <Clock size={16} />
           <span className="hidden sm:inline">Termin prywatny</span>
           <span className="sm:hidden">Prywatny</span>
+          <Badge count={privateCount} activeBg={view === "prywatne" ? "rgba(255,255,255,0.25)" : PRIVATE_PURPLE} />
         </button>
         <button onClick={onAddFreeDay} className={btnCls} style={{ background: view === "wolne" ? "#8A6A1F" : "#FDF6E9", color: view === "wolne" ? "white" : "#8A6A1F", border: view === "wolne" ? "none" : "1px solid #EED9A8" }}>
           <Umbrella size={16} />
           <span className="hidden sm:inline">Dzień wolny</span>
           <span className="sm:hidden">Wolne</span>
+          <Badge count={freeDaysCount} activeBg={view === "wolne" ? "rgba(255,255,255,0.25)" : "#8A6A1F"} />
         </button>
         <button onClick={onGoClients} className={btnCls} style={{ background: view === "clients" ? PRIMARY_DARK : "#F0EDE6", color: view === "clients" ? "white" : "#6B5D4A", border: "none" }}>
           <Users size={16} />
