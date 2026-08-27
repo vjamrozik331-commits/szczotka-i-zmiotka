@@ -1672,8 +1672,8 @@ function App() {
         invoicesCount={invoicesData.totalCount}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
-        onAddPrivate={() => setShowPrivateList(true)}
-        onAddFreeDay={() => setShowFreeDaysList(true)}
+        onAddPrivate={() => setView("prywatne")}
+        onAddFreeDay={() => setView("wolne")}
         onGoUpcoming={() => setView("upcoming")}
         onGoCompleted={() => setView("wykonane")}
         onGoFaktury={() => setView("faktury")}
@@ -1754,6 +1754,28 @@ function App() {
             onMove={openMove}
             onAddForDay={(dateStr) => openAddClientForm(dateStr)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
+          />
+        )}
+        {view === "prywatne" && (
+          <PrivateView
+            entries={entries}
+            year={year}
+            onAddNew={openAddPrivateForm}
+            onEdit={openEditForm}
+            onDelete={deleteEntry}
+            onSetStatus={setEntryStatus}
+            onMarkDone={openMarkDone}
+            onMove={openMove}
+          />
+        )}
+        {view === "wolne" && (
+          <FreeDaysView
+            freeDays={freeDays}
+            year={year}
+            onAddNew={openFreeDayForm}
+            onEdit={openEditFreeDayGroup}
+            onMove={openMoveFreeDayGroup}
+            onRemove={(group) => removeFreeDayGroup(group.ids)}
           />
         )}
         {view === "faktury" && (
@@ -2115,12 +2137,12 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
           <span className="hidden sm:inline">Wydatki</span>
           <span className="sm:hidden">Wydatki</span>
         </button>
-        <button onClick={onAddPrivate} className={btnCls} style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, border: "1px solid #CECBF6" }}>
+        <button onClick={onAddPrivate} className={btnCls} style={{ background: view === "prywatne" ? PRIVATE_PURPLE : "#EEEDFE", color: view === "prywatne" ? "white" : PRIVATE_PURPLE, border: view === "prywatne" ? "none" : "1px solid #CECBF6" }}>
           <Clock size={16} />
           <span className="hidden sm:inline">Termin prywatny</span>
           <span className="sm:hidden">Prywatny</span>
         </button>
-        <button onClick={onAddFreeDay} className={btnCls} style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}>
+        <button onClick={onAddFreeDay} className={btnCls} style={{ background: view === "wolne" ? "#8A6A1F" : "#FDF6E9", color: view === "wolne" ? "white" : "#8A6A1F", border: view === "wolne" ? "none" : "1px solid #EED9A8" }}>
           <Umbrella size={16} />
           <span className="hidden sm:inline">Dzień wolny</span>
           <span className="sm:hidden">Wolne</span>
@@ -2595,6 +2617,241 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
           onMove={onMove}
           onClose={() => setDetail(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function PrivateView({ entries, year, onAddNew, onEdit, onDelete, onSetStatus, onMarkDone, onMove }) {
+  const [monthIdx, setMonthIdx] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() === year ? now.getMonth() : 0;
+  });
+  const [dayDetail, setDayDetail] = useState(null);
+
+  const items = useMemo(
+    () => entries
+      .filter((e) => e.typWpisu === "prywatne" && e.data && e.data.startsWith(`${year}-${String(monthIdx + 1).padStart(2, "0")}`))
+      .sort(compareEntries),
+    [entries, year, monthIdx]
+  );
+
+  return (
+    <div className="space-y-6">
+      <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIVATE_PURPLE }}>
+        <Clock size={22} /> Terminy prywatne <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
+      </h2>
+
+      <button
+        onClick={onAddNew}
+        className="px-4 py-2.5 rounded-lg text-sm font-semibold"
+        style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, border: "1px solid #CECBF6" }}
+      >
+        + Zaplanuj termin prywatny
+      </button>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <h3 className="text-sm font-semibold" style={{ color: PRIVATE_PURPLE }}>
+          Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({items.length})</span>
+        </h3>
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={15} color={PRIVATE_PURPLE} />
+          </button>
+          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIVATE_PURPLE, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={15} color={PRIVATE_PURPLE} />
+          </button>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          Brak terminów prywatnych w tym miesiącu.
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-4 flex-wrap">
+            <MiniMonthCalendar year={year} month={monthIdx} entries={items} onDayClick={(dateStr) => setDayDetail(dateStr)} />
+          </div>
+
+          <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+              {items.map((e) => {
+                const isOverdue = e.statusZlecenia === "Zaplanowane" && e.data < todayStr();
+                const isCancelled = e.statusZlecenia === "Odwołane";
+                const isPlanned = e.statusZlecenia === "Zaplanowane";
+                return (
+                  <div key={e.id} className="px-4 py-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isOverdue ? CORAL : PRIVATE_PURPLE, minWidth: 56 }}>
+                        {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
+                      </div>
+                      <button onClick={() => onEdit(e)} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-sm font-medium truncate" style={{ color: PRIVATE_PURPLE }}>{e.klient || "—"}</div>
+                          {isOverdue && (
+                            <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
+                              <AlertTriangle size={9} /> Zaległe
+                            </span>
+                          )}
+                        </div>
+                        {e.adres && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres}</div>}
+                      </button>
+                      {Number(e.wydatki) > 0 && (
+                        <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIVATE_PURPLE, flexShrink: 0 }}>
+                          {fmtPLN(Number(e.wydatki))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-2">
+                      {isPlanned && (
+                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
+                          <CheckCircle2 size={15} color={PRIMARY} />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj termin">
+                          <Ban size={15} color="#8CA098" />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
+                          <Move size={14} color="#2A5C8A" />
+                        </button>
+                      )}
+                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {dayDetail && (
+        <DayDetailModal
+          dateStr={dayDetail}
+          entries={entries.filter((e) => e.data === dayDetail)}
+          onEdit={(e) => { onEdit(e); setDayDetail(null); }}
+          onAddNew={(dateStr) => { onAddNew(dateStr); setDayDetail(null); }}
+          onDelete={onDelete}
+          onSetStatus={onSetStatus}
+          onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
+          onMove={(e) => { onMove(e); setDayDetail(null); }}
+          onClose={() => setDayDetail(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FreeDaysView({ freeDays, year, onAddNew, onEdit, onMove, onRemove }) {
+  const [monthIdx, setMonthIdx] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() === year ? now.getMonth() : 0;
+  });
+
+  const allGroups = useMemo(() => groupConsecutiveFreeDays(freeDays, year), [freeDays, year]);
+  const groups = useMemo(
+    () => allGroups.filter((g) => new Date(g.startDate + "T00:00:00").getMonth() === monthIdx),
+    [allGroups, monthIdx]
+  );
+  const calendarEntries = useMemo(
+    () => freeDays.filter((d) => d.date && d.date.startsWith(`${year}-${String(monthIdx + 1).padStart(2, "0")}`)).map((d) => ({ ...d, data: d.date })),
+    [freeDays, year, monthIdx]
+  );
+
+  return (
+    <div className="space-y-6">
+      <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: "#8A6A1F" }}>
+        <Umbrella size={22} /> Dni wolne <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
+      </h2>
+
+      <button
+        onClick={onAddNew}
+        className="px-4 py-2.5 rounded-lg text-sm font-semibold"
+        style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}
+      >
+        + Zaplanuj dzień wolny
+      </button>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <h3 className="text-sm font-semibold" style={{ color: "#8A6A1F" }}>
+          Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({groups.length})</span>
+        </h3>
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={15} color="#8A6A1F" />
+          </button>
+          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: "#8A6A1F", fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={15} color="#8A6A1F" />
+          </button>
+        </div>
+      </div>
+
+      {groups.length === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          Brak zaplanowanych dni wolnych w tym miesiącu.
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-4 flex-wrap">
+            <MiniMonthCalendar year={year} month={monthIdx} entries={calendarEntries} onDayClick={() => {}} />
+          </div>
+
+          <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+              {groups.map((g) => {
+                const isRange = g.startDate !== g.endDate;
+                return (
+                  <div key={g.ids[0]} className="px-4 py-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex-shrink-0" style={{ minWidth: isRange ? 100 : 80 }}>
+                        {isRange ? (
+                          <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", whiteSpace: "nowrap" }}>
+                            {g.startDate.slice(8, 10)}.{g.startDate.slice(5, 7)}–{g.endDate.slice(8, 10)}.{g.endDate.slice(5, 7)}
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F" }}>
+                              {g.startDate.slice(8, 10)}.{g.startDate.slice(5, 7)}
+                            </div>
+                            <div className="text-[10px] capitalize" style={{ color: "#8CA098" }}>{weekdayName(g.startDate)}</div>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-[120px] text-sm font-medium truncate" style={{ color: INK }}>{g.opis || "—"}</div>
+                      {isRange && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
+                          {g.ids.length} dni
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-2">
+                      <button onClick={() => onMove(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
+                        <Move size={14} color="#2A5C8A" />
+                      </button>
+                      <button onClick={() => onEdit(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onRemove(g)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
