@@ -90,6 +90,13 @@
 </script>
 <div id="root"></div>
 <script type="text/babel" data-presets="react" data-type="module">
+{/*
+  ===================================================================
+  ZNACZNIK PRZED WDROŻENIEM BLOKADY PIN — 27.08.2026
+  Jeśli coś pójdzie nie tak z blokadą PIN, wróć do pliku:
+  index-BACKUP-przed-PIN-2026-08-27.html (kopia zapasowa sprzed zmian)
+  ===================================================================
+*/}
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 const {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
@@ -481,6 +488,164 @@ function WwwOrderPopup({ entry, remaining, onClose, onJumpToDay }) {
   );
 }
 
+// === BLOKADA DOSTĘPU (PIN / Face ID) — 27.08.2026 ===
+// Chroni tylko widok na ekranie (nie samą bazę danych — patrz notatka w pamięci projektu).
+// Wymagane przy każdym wejściu, nic nie jest zapamiętywane między sesjami.
+const APP_PIN = "5505";
+const WEBAUTHN_CRED_KEY = "sizPasskeyCredId";
+
+function LockScreen({ onUnlock }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [webAuthnAvailable, setWebAuthnAvailable] = useState(false);
+  const [webAuthnBusy, setWebAuthnBusy] = useState(false);
+  const hasCredential = !!localStorage.getItem(WEBAUTHN_CRED_KEY);
+
+  useEffect(() => {
+    if (window.PublicKeyCredential && window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(setWebAuthnAvailable).catch(() => setWebAuthnAvailable(false));
+    }
+  }, []);
+
+  function handlePinDigit(d) {
+    if (pin.length >= 4) return;
+    const next = pin + d;
+    setPin(next);
+    setError("");
+    if (next.length === 4) {
+      if (next === APP_PIN) {
+        onUnlock();
+      } else {
+        setError("Błędny PIN");
+        setTimeout(() => setPin(""), 400);
+      }
+    }
+  }
+
+  async function registerFaceId() {
+    setWebAuthnBusy(true);
+    setError("");
+    try {
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+      const userId = new Uint8Array(16);
+      crypto.getRandomValues(userId);
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: { name: "Szczotka i Zmiotka" },
+          user: { id: userId, name: "vanessa@szczotkaizmiotka", displayName: "Vanessa Jamrozik" },
+          pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+          timeout: 60000,
+        },
+      });
+      if (cred) {
+        localStorage.setItem(WEBAUTHN_CRED_KEY, cred.id);
+        onUnlock();
+      }
+    } catch (e) {
+      setError("Nie udało się zarejestrować Face ID / Touch ID na tym urządzeniu.");
+    }
+    setWebAuthnBusy(false);
+  }
+
+  async function unlockWithFaceId() {
+    setWebAuthnBusy(true);
+    setError("");
+    try {
+      const credId = localStorage.getItem(WEBAUTHN_CRED_KEY);
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+      const idBytes = Uint8Array.from(atob(credId.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          allowCredentials: [{ id: idBytes, type: "public-key" }],
+          userVerification: "required",
+          timeout: 60000,
+        },
+      });
+      if (assertion) onUnlock();
+    } catch (e) {
+      setError("Nie udało się odblokować przez Face ID / Touch ID. Użyj PIN-u.");
+    }
+    setWebAuthnBusy(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center px-6" style={{ background: "#154A3F" }}>
+      <div className="w-full max-w-xs">
+        <div className="text-center mb-8">
+          <div className="text-white text-xl font-semibold mb-1" style={{ fontFamily: "'Fraunces', serif" }}>Szczotka i Zmiotka</div>
+          <div className="text-sm" style={{ color: "#AFC8BE" }}>Podaj PIN, aby otworzyć terminarz</div>
+        </div>
+
+        <div className="flex justify-center gap-3 mb-6">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="w-4 h-4 rounded-full border-2"
+              style={{
+                borderColor: error ? "#E0665A" : "#fff",
+                background: i < pin.length ? (error ? "#E0665A" : "#fff") : "transparent",
+              }}
+            />
+          ))}
+        </div>
+
+        {error && <div className="text-center text-sm mb-4" style={{ color: "#E0665A" }}>{error}</div>}
+
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+            <button
+              key={d}
+              onClick={() => handlePinDigit(d)}
+              className="aspect-square rounded-full text-xl font-semibold transition active:scale-95"
+              style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}
+            >
+              {d}
+            </button>
+          ))}
+          <div />
+          <button
+            onClick={() => handlePinDigit("0")}
+            className="aspect-square rounded-full text-xl font-semibold transition active:scale-95"
+            style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}
+          >
+            0
+          </button>
+          <button
+            onClick={() => setPin((p) => p.slice(0, -1))}
+            className="aspect-square rounded-full text-sm font-semibold transition active:scale-95 flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}
+          >
+            ⌫
+          </button>
+        </div>
+
+        {webAuthnAvailable && (
+          <button
+            onClick={hasCredential ? unlockWithFaceId : registerFaceId}
+            disabled={webAuthnBusy}
+            className="w-full py-3 rounded-xl text-sm font-semibold transition disabled:opacity-50"
+            style={{ background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)" }}
+          >
+            {webAuthnBusy ? "Sprawdzam…" : hasCredential ? "Odblokuj przez Face ID / Touch ID" : "Włącz Face ID / Touch ID na tym urządzeniu"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AppGate() {
+  const [unlocked, setUnlocked] = useState(false);
+  if (!unlocked) return <LockScreen onUnlock={() => setUnlocked(true)} />;
+  return <App />;
+}
+// === KONIEC BLOKADY DOSTĘPU ===
+
 function App() {
   const [entries, setEntries] = useState(null);
   const [freeDays, setFreeDays] = useState([]);
@@ -498,6 +663,7 @@ function App() {
   const [moveInfo, setMoveInfo] = useState(null);
   const [moveConflict, setMoveConflict] = useState(null);
   const [showFreeDaysList, setShowFreeDaysList] = useState(false);
+  const [showPrivateList, setShowPrivateList] = useState(false);
   const [editingFreeDayGroup, setEditingFreeDayGroup] = useState(null); // { ids, startDate, endDate, opis } lub null
   const [movingFreeDayGroup, setMovingFreeDayGroup] = useState(null); // { ids, startDate, endDate, opis } lub null
   const [movingFreeDayDate, setMovingFreeDayDate] = useState("");
@@ -864,7 +1030,7 @@ function App() {
     const zaplanowane = all.filter((e) => e.statusZlecenia === "Zaplanowane").sort(compareEntries);
     const today = todayStr();
     const zalegle = all.filter((e) => e.statusZlecenia === "Zaplanowane" && e.data < today).sort(compareEntries);
-    const prywatne = all.filter((e) => e.typWpisu === "prywatne" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
+    const prywatne = all.filter((e) => e.typWpisu === "prywatne" && e.statusZlecenia !== "Odwołane" && e.data >= todayStr()).sort(compareEntries);
     const zeStrony = all.filter((e) => e.zrodloRezerwacji === "www" && e.statusZlecenia !== "Odwołane").sort(compareEntries);
     const oczekujacePlatnosci = all.filter((e) => e.statusZlecenia === "Wykonane" && e.status === "Oczekuje" && Number(e.zarobki) > 0 && !e.fakturaVat).sort(compareEntries);
     const fakturyDoWystawienia = all.filter((e) => e.fakturaVat && !e.fakturaWystawiona && e.statusZlecenia !== "Odwołane").sort(compareEntries);
@@ -1380,7 +1546,7 @@ function App() {
         invoicesCount={invoicesData.totalCount}
         onAddClient={() => openAddClientForm()}
         onAddPurchase={() => openAddPurchaseForm()}
-        onAddPrivate={() => openAddPrivateForm()}
+        onAddPrivate={() => setShowPrivateList(true)}
         onAddFreeDay={() => setShowFreeDaysList(true)}
         onGoUpcoming={() => setView("upcoming")}
         onGoCompleted={() => setView("wykonane")}
@@ -1587,6 +1753,20 @@ function App() {
           onMove={openMoveFreeDayGroup}
           onRemove={(group) => removeFreeDayGroup(group.ids)}
           onClose={() => setShowFreeDaysList(false)}
+        />
+      )}
+
+      {showPrivateList && !showForm && !moveInfo && (
+        <PrivateListModal
+          entries={entries}
+          year={year}
+          onAddNew={() => { setShowPrivateList(false); openAddPrivateForm(); }}
+          onEdit={(entry) => { setShowPrivateList(false); openEditForm(entry); }}
+          onDelete={deleteEntry}
+          onSetStatus={setEntryStatus}
+          onMarkDone={openMarkDone}
+          onMove={(entry) => { setShowPrivateList(false); openMove(entry); }}
+          onClose={() => setShowPrivateList(false)}
         />
       )}
 
@@ -1887,6 +2067,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
   const [showPast, setShowPast] = useState(false);
 
   const today = todayStr();
+  const upcomingFreeDays = freeDays.filter((d) => d.date >= today);
   const pastCount = isCurrentMonth ? entries.filter((e) => e.data && e.data < today).length : 0;
   const isCollapsed = isCurrentMonth && pastCount > 0 && !search.trim() && !showPast;
   const visibleEntries = isCollapsed ? entries.filter((e) => !e.data || e.data >= today) : entries;
@@ -1908,8 +2089,8 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
         <KpiCard icon={TrendingUp} label="Zysk netto" value={fmtPLN(summary.zysk)} accent={summary.zysk >= 0 ? PRIMARY_DARK : CORAL} />
         <KpiCard icon={Clock} label="Śr. stawka" value={summary.stawka > 0 ? fmtPLN(summary.stawka) + "/h" : "—"} />
         <KpiCard icon={Receipt} label="Wydatki" value={`${detailLists.wydatki.length} · ${fmtPLN(summary.wydatki)}`} accent={CORAL} onClick={() => setDetail("wydatki")} />
-        {freeDays.length > 0 && (
-          <KpiCard icon={Umbrella} label="Dni wolne" value={freeDays.length} accent="#8A6A1F" onClick={() => setDetail("wolne")} />
+        {upcomingFreeDays.length > 0 && (
+          <KpiCard icon={Umbrella} label="Dni wolne" value={upcomingFreeDays.length} accent="#8A6A1F" onClick={() => setDetail("wolne")} />
         )}
         {detailLists.prywatne.length > 0 && (
           <KpiCard icon={Clock} label="Terminy prywatne" value={detailLists.prywatne.length} accent={PRIVATE_PURPLE} onClick={() => setDetail("prywatne")} />
@@ -1934,7 +2115,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
         <KpiDetailModal
           type={detail}
           entries={detailLists[detail] || []}
-          freeDays={freeDays}
+          freeDays={upcomingFreeDays}
           onEdit={onEdit}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
@@ -3904,8 +4085,124 @@ function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImport
   );
 }
 
+function PrivateListModal({ entries, year, onAddNew, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onClose }) {
+  const [monthIdx, setMonthIdx] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() === year ? now.getMonth() : 0;
+  });
+  const items = useMemo(
+    () => entries
+      .filter((e) => e.typWpisu === "prywatne" && e.data && e.data.startsWith(`${year}-${String(monthIdx + 1).padStart(2, "0")}`))
+      .sort(compareEntries),
+    [entries, year, monthIdx]
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
+      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIVATE_PURPLE }}>
+            <Clock size={17} /> Terminy prywatne <span style={{ color: "#8CA098", fontWeight: 400, fontSize: "1rem" }}>{year}</span>
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+        </div>
+
+        <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
+          <button
+            onClick={onAddNew}
+            className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold"
+            style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, border: "1px solid #CECBF6" }}
+          >
+            + Zaplanuj termin prywatny
+          </button>
+        </div>
+
+        <div className="px-5 py-2.5 border-b flex items-center justify-center gap-2 flex-shrink-0" style={{ borderColor: LINE_COLOR, background: "#FAFBFA" }}>
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={15} color={PRIVATE_PURPLE} />
+          </button>
+          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIVATE_PURPLE, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={15} color={PRIVATE_PURPLE} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak terminów prywatnych w tym miesiącu.</div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+              {items.map((e) => {
+                const isOverdue = e.statusZlecenia === "Zaplanowane" && e.data < todayStr();
+                const isCancelled = e.statusZlecenia === "Odwołane";
+                const isPlanned = e.statusZlecenia === "Zaplanowane";
+                return (
+                  <div key={e.id} className="px-5 py-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isOverdue ? CORAL : PRIVATE_PURPLE, minWidth: 56 }}>
+                        {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
+                      </div>
+                      <button onClick={() => { onEdit(e); onClose(); }} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-sm font-medium truncate" style={{ color: PRIVATE_PURPLE }}>{e.klient || "—"}</div>
+                          {isOverdue && (
+                            <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
+                              <AlertTriangle size={9} /> Zaległe
+                            </span>
+                          )}
+                        </div>
+                        {e.adres && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres}</div>}
+                      </button>
+                      {Number(e.wydatki) > 0 && (
+                        <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIVATE_PURPLE, flexShrink: 0 }}>
+                          {fmtPLN(Number(e.wydatki))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-2">
+                      {isPlanned && (
+                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
+                          <CheckCircle2 size={15} color={PRIMARY} />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj termin">
+                          <Ban size={15} color="#8CA098" />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => { onMove(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
+                          <Move size={14} color="#2A5C8A" />
+                        </button>
+                      )}
+                      <button onClick={() => { onEdit(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={14} color="#5B6E67" />
+                      </button>
+                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                        <Trash2 size={14} color={CORAL} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FreeDaysListModal({ freeDays, year, onAddNew, onEdit, onMove, onRemove, onClose }) {
-  const groups = useMemo(() => groupConsecutiveFreeDays(freeDays, year), [freeDays, year]);
+  const [monthIdx, setMonthIdx] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() === year ? now.getMonth() : 0;
+  });
+  const allGroups = useMemo(() => groupConsecutiveFreeDays(freeDays, year), [freeDays, year]);
+  const groups = useMemo(
+    () => allGroups.filter((g) => new Date(g.startDate + "T00:00:00").getMonth() === monthIdx),
+    [allGroups, monthIdx]
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
@@ -3927,9 +4224,19 @@ function FreeDaysListModal({ freeDays, year, onAddNew, onEdit, onMove, onRemove,
           </button>
         </div>
 
+        <div className="px-5 py-2.5 border-b flex items-center justify-center gap-2 flex-shrink-0" style={{ borderColor: LINE_COLOR, background: "#FAFBFA" }}>
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={15} color="#8A6A1F" />
+          </button>
+          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: "#8A6A1F", fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={15} color="#8A6A1F" />
+          </button>
+        </div>
+
         <div className="overflow-y-auto flex-1">
           {groups.length === 0 ? (
-            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak zaplanowanych dni wolnych w {year} roku.</div>
+            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak zaplanowanych dni wolnych w tym miesiącu.</div>
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {groups.map((g) => {
@@ -4128,7 +4435,7 @@ function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
 }
 
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<AppGate />);
 
 </script>
 </body>
