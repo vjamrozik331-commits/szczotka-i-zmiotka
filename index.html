@@ -1170,6 +1170,13 @@ function App() {
     ).length;
   }, [freeDays, activeTab, year]);
 
+  const monthExpensesCount = useMemo(() => {
+    return (entries || []).filter(
+      (e) => Number(e.wydatki) > 0
+        && e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year
+    ).length;
+  }, [entries, activeTab, year]);
+
   const monthDetailLists = useMemo(() => {
     const all = (entries || []).filter((e) => e.data && new Date(e.data + "T00:00:00").getMonth() === activeTab && new Date(e.data + "T00:00:00").getFullYear() === year);
     const zarobki = all.filter((e) => isRealized(e) && Number(e.zarobki) > 0).sort(compareEntries);
@@ -1693,8 +1700,9 @@ function App() {
         invoicesCount={monthInvoicesCount}
         privateCount={monthPrivateCount}
         freeDaysCount={monthFreeDaysCount}
+        expensesCount={monthExpensesCount}
         onAddClient={() => openAddClientForm()}
-        onAddPurchase={() => openAddPurchaseForm()}
+        onGoExpenses={() => setView("wydatki")}
         onAddPrivate={() => setView("prywatne")}
         onAddFreeDay={() => setView("wolne")}
         onGoUpcoming={() => setView("upcoming")}
@@ -1799,6 +1807,15 @@ function App() {
             onEdit={openEditFreeDayGroup}
             onMove={openMoveFreeDayGroup}
             onRemove={(group) => removeFreeDayGroup(group.ids)}
+          />
+        )}
+        {view === "wydatki" && (
+          <ExpensesView
+            entries={entries}
+            year={year}
+            onAddNew={openAddPurchaseForm}
+            onEdit={openEditForm}
+            onDelete={deleteEntry}
           />
         )}
         {view === "faktury" && (
@@ -2137,7 +2154,7 @@ function TabBar({ activeTab, view, year, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, privateCount, freeDaysCount, onAddClient, onAddPurchase, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
+function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, privateCount, freeDaysCount, expensesCount, onAddClient, onAddPurchase, onGoExpenses, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
   const btnCls = "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 sm:px-4 py-2 rounded-lg text-[9px] sm:text-sm font-semibold transition hover:opacity-90 text-center leading-tight";
   const Badge = ({ count, activeBg, inactiveBg }) => count > 0 ? (
     <span
@@ -2155,10 +2172,11 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
           <span className="hidden sm:inline">Zaplanuj zlecenie</span>
           <span className="sm:hidden">Zlecenie</span>
         </button>
-        <button onClick={onAddPurchase} className={btnCls} style={{ background: CORAL, color: "white", border: "none" }}>
+        <button onClick={onGoExpenses} className={btnCls} style={{ background: view === "wydatki" ? CORAL : "#FCE9E7", color: view === "wydatki" ? "white" : CORAL, border: "none" }}>
           <Receipt size={16} />
           <span className="hidden sm:inline">Wydatki</span>
           <span className="sm:hidden">Wydatki</span>
+          <Badge count={expensesCount} activeBg={view === "wydatki" ? "rgba(255,255,255,0.25)" : CORAL} />
         </button>
         <button onClick={onAddPrivate} className={btnCls} style={{ background: view === "prywatne" ? PRIVATE_PURPLE : "#EEEDFE", color: view === "prywatne" ? "white" : PRIVATE_PURPLE, border: view === "prywatne" ? "none" : "1px solid #CECBF6" }}>
           <Clock size={16} />
@@ -2642,6 +2660,87 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
           onMove={onMove}
           onClose={() => setDetail(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function ExpensesView({ entries, year, onAddNew, onEdit, onDelete }) {
+  const [monthIdx, setMonthIdx] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() === year ? now.getMonth() : 0;
+  });
+
+  const items = useMemo(
+    () => entries
+      .filter((e) => Number(e.wydatki) > 0 && e.data && e.data.startsWith(`${year}-${String(monthIdx + 1).padStart(2, "0")}`))
+      .sort(compareEntries),
+    [entries, year, monthIdx]
+  );
+  const total = items.reduce((s, e) => s + (Number(e.wydatki) || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: CORAL }}>
+        <Receipt size={22} /> Wydatki <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
+      </h2>
+
+      <button
+        onClick={onAddNew}
+        className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
+        style={{ background: CORAL }}
+      >
+        + Dodaj wydatek
+      </button>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <h3 className="text-sm font-semibold" style={{ color: CORAL }}>
+          Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({items.length}{items.length > 0 ? ` · ${fmtPLN(total)}` : ""})</span>
+        </h3>
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={15} color={CORAL} />
+          </button>
+          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: CORAL, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={15} color={CORAL} />
+          </button>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#8CA098" }}>
+          Brak wydatków w tym miesiącu.
+        </div>
+      ) : (
+        <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+          <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
+            {items.map((e) => (
+              <div key={e.id} className="px-4 py-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: CORAL, minWidth: 56 }}>
+                    {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
+                  </div>
+                  <button onClick={() => onEdit(e)} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
+                    <div className="text-sm font-medium truncate" style={{ color: INK }}>{e.opisWydatkow || "—"}</div>
+                    {e.kategoria && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.kategoria}</div>}
+                  </button>
+                  <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: CORAL, flexShrink: 0 }}>
+                    {fmtPLN(Number(e.wydatki) || 0)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mt-2">
+                  <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                    <Pencil size={14} color="#5B6E67" />
+                  </button>
+                  <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                    <Trash2 size={14} color={CORAL} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
