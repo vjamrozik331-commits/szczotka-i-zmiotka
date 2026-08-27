@@ -1750,6 +1750,7 @@ function App() {
           <UpcomingView
             data={upcomingData}
             year={year}
+            activeMonth={activeTab}
             entries={entries}
             onEdit={openEditForm}
             onDelete={deleteEntry}
@@ -1778,6 +1779,7 @@ function App() {
             data={completedData}
             entries={entries}
             year={year}
+            activeMonth={activeTab}
             onEdit={openEditForm}
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
@@ -1791,6 +1793,7 @@ function App() {
           <PrivateView
             entries={entries}
             year={year}
+            activeMonth={activeTab}
             onAddNew={openAddPrivateForm}
             onEdit={openEditForm}
             onDelete={deleteEntry}
@@ -1803,6 +1806,7 @@ function App() {
           <FreeDaysView
             freeDays={freeDays}
             year={year}
+            activeMonth={activeTab}
             onAddNew={openFreeDayForm}
             onEdit={openEditFreeDayGroup}
             onMove={openMoveFreeDayGroup}
@@ -1813,13 +1817,14 @@ function App() {
           <ExpensesView
             entries={entries}
             year={year}
+            activeMonth={activeTab}
             onAddNew={openAddPurchaseForm}
             onEdit={openEditForm}
             onDelete={deleteEntry}
           />
         )}
         {view === "faktury" && (
-          <FakturyView data={invoicesData} year={year} onEdit={openEditForm} onToggleInvoice={toggleInvoiceIssued} onSetPaymentStatus={setPaymentStatus} />
+          <FakturyView data={invoicesData} year={year} initialMonth={activeTab} onEdit={openEditForm} onToggleInvoice={toggleInvoiceIssued} onSetPaymentStatus={setPaymentStatus} />
         )}
         {view === "clients" && (
           <ClientsView
@@ -2665,11 +2670,8 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
   );
 }
 
-function ExpensesView({ entries, year, onAddNew, onEdit, onDelete }) {
-  const [monthIdx, setMonthIdx] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() === year ? now.getMonth() : 0;
-  });
+function ExpensesView({ entries, year, activeMonth, onAddNew, onEdit, onDelete }) {
+  const [monthIdx, setMonthIdx] = useState(activeMonth ?? 0);
 
   const items = useMemo(
     () => entries
@@ -2746,11 +2748,8 @@ function ExpensesView({ entries, year, onAddNew, onEdit, onDelete }) {
   );
 }
 
-function PrivateView({ entries, year, onAddNew, onEdit, onDelete, onSetStatus, onMarkDone, onMove }) {
-  const [monthIdx, setMonthIdx] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() === year ? now.getMonth() : 0;
-  });
+function PrivateView({ entries, year, activeMonth, onAddNew, onEdit, onDelete, onSetStatus, onMarkDone, onMove }) {
+  const [monthIdx, setMonthIdx] = useState(activeMonth ?? 0);
   const [dayDetail, setDayDetail] = useState(null);
 
   const items = useMemo(
@@ -2872,11 +2871,8 @@ function PrivateView({ entries, year, onAddNew, onEdit, onDelete, onSetStatus, o
   );
 }
 
-function FreeDaysView({ freeDays, year, onAddNew, onEdit, onMove, onRemove }) {
-  const [monthIdx, setMonthIdx] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() === year ? now.getMonth() : 0;
-  });
+function FreeDaysView({ freeDays, year, activeMonth, onAddNew, onEdit, onMove, onRemove }) {
+  const [monthIdx, setMonthIdx] = useState(activeMonth ?? 0);
 
   const allGroups = useMemo(() => groupConsecutiveFreeDays(freeDays, year), [freeDays, year]);
   const groups = useMemo(
@@ -2973,13 +2969,10 @@ function FreeDaysView({ freeDays, year, onAddNew, onEdit, onMove, onRemove }) {
   );
 }
 
-function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
+function CompletedView({ data, entries, year, activeMonth, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const { done, zarobki, liczba } = data;
   const [dayDetail, setDayDetail] = useState(null); // dateStr | null
-  const [monthIdx, setMonthIdx] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() === year ? now.getMonth() : 0;
-  });
+  const [monthIdx, setMonthIdx] = useState(activeMonth ?? 0);
 
   const monthGroups = useMemo(() => {
     const groups = {};
@@ -3070,7 +3063,7 @@ function CompletedView({ data, entries, year, onEdit, onDelete, onSetStatus, onM
   );
 }
 
-function UpcomingView({ data, year, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
+function UpcomingView({ data, year, activeMonth, entries, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onAddForDay, onJumpToMonth }) {
   const { overdue, upcoming, zarobkiPlanowane, liczba, next7count } = data;
   const isEmpty = overdue.length === 0 && upcoming.length === 0;
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
@@ -3093,7 +3086,9 @@ function UpcomingView({ data, year, entries, onEdit, onDelete, onSetStatus, onMa
   }, [overdue, upcoming]);
 
   const todayKey = todayStr().slice(0, 7);
+  const selectedKey = activeMonth != null ? `${year}-${String(activeMonth + 1).padStart(2, "0")}` : null;
   const [activeKey, setActiveKey] = useState(() => {
+    if (selectedKey && monthGroups.some((g) => g.key === selectedKey)) return selectedKey;
     const idx = monthGroups.findIndex((g) => g.key === todayKey);
     return idx >= 0 ? monthGroups[idx].key : (monthGroups[0] ? monthGroups[0].key : todayKey);
   });
@@ -3492,12 +3487,9 @@ function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
   );
 }
 
-function FakturyView({ data, year, onEdit, onToggleInvoice, onSetPaymentStatus }) {
+function FakturyView({ data, year, initialMonth, onEdit, onToggleInvoice, onSetPaymentStatus }) {
   const [expanded, setExpanded] = useState(null); // "monthIdx-klient" | null
-  const [monthIdx, setMonthIdx] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() === year ? now.getMonth() : 0;
-  });
+  const [monthIdx, setMonthIdx] = useState(initialMonth ?? 0);
   const [filterMode, setFilterMode] = useState("pending"); // "pending" | "issued"
 
   const activeMonth = data.months.find((m) => m.monthIdx === monthIdx) || null;
