@@ -2671,10 +2671,6 @@ function PrivateView({ entries, year, onAddNew, onEdit, onDelete, onSetStatus, o
         </div>
       ) : (
         <>
-          <div className="flex gap-4 flex-wrap">
-            <MiniMonthCalendar year={year} month={monthIdx} entries={items} onDayClick={(dateStr) => setDayDetail(dateStr)} />
-          </div>
-
           <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {items.map((e) => {
@@ -2689,7 +2685,7 @@ function PrivateView({ entries, year, onAddNew, onEdit, onDelete, onSetStatus, o
                       </div>
                       <button onClick={() => onEdit(e)} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
                         <div className="flex items-center gap-1.5">
-                          <div className="text-sm font-medium truncate" style={{ color: PRIVATE_PURPLE }}>{e.klient || "—"}</div>
+                          <div className="text-sm font-medium truncate" style={{ color: PRIVATE_PURPLE }}>{e.klient || e.opisWydatkow || "—"}</div>
                           {isOverdue && (
                             <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
                               <AlertTriangle size={9} /> Zaległe
@@ -2803,10 +2799,6 @@ function FreeDaysView({ freeDays, year, onAddNew, onEdit, onMove, onRemove }) {
         </div>
       ) : (
         <>
-          <div className="flex gap-4 flex-wrap">
-            <MiniMonthCalendar year={year} month={monthIdx} entries={calendarEntries} onDayClick={() => {}} />
-          </div>
-
           <div className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
               {groups.map((g) => {
@@ -3122,25 +3114,29 @@ function MiniMonthCalendar({ year, month, entries, onDayClick, tone = "planned" 
           const isOverdue = tone === "planned" && hasEntries && cell.dateStr < todayStr();
           const isToday = cell.dateStr === todayStr();
           const doneStyle = tone === "done" && hasEntries;
+          const isFreeDayTone = tone === "wolne" && hasEntries;
+          const isPrivateTone = tone === "prywatne" && hasEntries;
           const holidayName = polishHolidayName(cell.dateStr);
           return (
             <button
               key={idx}
               onClick={() => onDayClick(cell.dateStr)}
-              className="aspect-square rounded-md flex items-center justify-center text-[11px] transition hover:opacity-70"
+              className="aspect-square rounded-md flex items-center justify-center relative text-[11px] transition hover:opacity-70"
               style={{
-                background: isOverdue ? "#FDECEA" : doneStyle ? "rgba(31,110,92,0.12)" : hasEntries ? "#EAF1F8" : "transparent",
-                border: isToday ? `2.5px solid ${PRIMARY_DARK}` : isOverdue ? "1px dashed #E0665A" : doneStyle ? "1px solid rgba(31,110,92,0.4)" : hasEntries ? "1px dashed #2A5C8A" : holidayName ? "1px solid #E0665A" : "1px solid transparent",
-                color: isOverdue ? CORAL : doneStyle ? PRIMARY_DARK : hasEntries ? "#2A5C8A" : holidayName ? "#B23A2E" : isToday ? PRIMARY_DARK : "#B0B8B5",
+                background: isFreeDayTone ? "#FDF6E9" : isPrivateTone ? "#EEEDFE" : isOverdue ? "#FDECEA" : doneStyle ? "rgba(31,110,92,0.12)" : hasEntries ? "#EAF1F8" : "transparent",
+                border: isToday ? `2.5px solid ${PRIMARY_DARK}` : isFreeDayTone ? "1px solid #EED9A8" : isPrivateTone ? "1px solid #CECBF6" : isOverdue ? "1px dashed #E0665A" : doneStyle ? "1px solid rgba(31,110,92,0.4)" : hasEntries ? "1px dashed #2A5C8A" : holidayName ? "1px solid #E0665A" : "1px solid transparent",
+                color: isFreeDayTone ? "#8A6A1F" : isPrivateTone ? PRIVATE_PURPLE : isOverdue ? CORAL : doneStyle ? PRIMARY_DARK : hasEntries ? "#2A5C8A" : holidayName ? "#B23A2E" : isToday ? PRIMARY_DARK : "#B0B8B5",
                 fontFamily: MONO_FONT,
                 fontWeight: hasEntries || isToday || holidayName ? 700 : 400,
                 textDecoration: isToday ? "underline" : "none",
                 textUnderlineOffset: "2px",
                 cursor: "pointer",
               }}
-              title={holidayName ? `Święto: ${holidayName}` : hasEntries ? `${cell.entries.length} ${tone === "done" ? "wykonane" : "zaplanowane"}` : "Kliknij, żeby zaplanować zlecenie"}
+              title={holidayName ? `Święto: ${holidayName}` : hasEntries ? `${cell.entries.length} ${tone === "done" ? "wykonane" : tone === "wolne" ? "wolne" : tone === "prywatne" ? "prywatne" : "zaplanowane"}` : "Kliknij, żeby zaplanować zlecenie"}
             >
               {cell.day}
+              {isFreeDayTone && <Umbrella size={8} className="absolute bottom-0.5" />}
+              {isPrivateTone && <Clock size={8} className="absolute bottom-0.5" />}
             </button>
           );
         })}
@@ -4537,7 +4533,7 @@ function PrivateListModal({ entries, year, onAddNew, onEdit, onDelete, onSetStat
                       </div>
                       <button onClick={() => { onEdit(e); onClose(); }} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
                         <div className="flex items-center gap-1.5">
-                          <div className="text-sm font-medium truncate" style={{ color: PRIVATE_PURPLE }}>{e.klient || "—"}</div>
+                          <div className="text-sm font-medium truncate" style={{ color: PRIVATE_PURPLE }}>{e.klient || e.opisWydatkow || "—"}</div>
                           {isOverdue && (
                             <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
                               <AlertTriangle size={9} /> Zaległe
