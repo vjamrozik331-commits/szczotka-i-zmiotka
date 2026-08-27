@@ -3122,18 +3122,18 @@ function UpcomingView({ data, year, entries, onEdit, onDelete, onSetStatus, onMa
       ) : (
         <>
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold" style={{ color: PRIMARY_DARK }}>
+            <h3 className="text-sm font-semibold" style={{ color: "#2A5C8A" }}>
               Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({activeGroup ? activeGroup.entries.length : 0} {(activeGroup ? activeGroup.entries.length : 0) === 1 ? "zlecenie" : "zleceń"})</span>
             </h3>
             <div className="flex items-center gap-2 ml-auto">
               <button onClick={() => setActiveKey(monthGroups[Math.max(0, activeIdx - 1)].key)} disabled={activeIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-                <ChevronLeft size={15} color={PRIMARY_DARK} />
+                <ChevronLeft size={15} color="#2A5C8A" />
               </button>
-              <span className="text-sm font-semibold min-w-[130px] text-center" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>
+              <span className="text-sm font-semibold min-w-[130px] text-center" style={{ color: "#2A5C8A", fontFamily: DISPLAY_FONT }}>
                 {activeGroup ? MONTH_NAMES[activeGroup.month] : "—"}
               </span>
               <button onClick={() => setActiveKey(monthGroups[Math.min(monthGroups.length - 1, activeIdx + 1)].key)} disabled={activeIdx >= monthGroups.length - 1} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-                <ChevronRight size={15} color={PRIMARY_DARK} />
+                <ChevronRight size={15} color="#2A5C8A" />
               </button>
             </div>
           </div>
@@ -3557,11 +3557,11 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
         </h3>
         <div className="flex items-center gap-2 ml-auto">
           <button onClick={onPrevMonth} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronLeft size={15} color={PRIMARY_DARK} />
+            <ChevronLeft size={15} color={GOLD} />
           </button>
-          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
+          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: GOLD, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
           <button onClick={onNextMonth} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronRight size={15} color={PRIMARY_DARK} />
+            <ChevronRight size={15} color={GOLD} />
           </button>
         </div>
       </div>
