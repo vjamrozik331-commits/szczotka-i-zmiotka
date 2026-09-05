@@ -2338,8 +2338,8 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         </button>
         <button onClick={onGoSchedule} className={btnCls} style={{ background: view === "grafik" ? PRIMARY_DARK : "#EAF1F8", color: view === "grafik" ? "white" : "#2A5C8A", border: "none" }}>
           <Clock size={16} />
-          <span className="hidden sm:inline">Grafik dnia</span>
-          <span className="sm:hidden">Grafik</span>
+          <span className="hidden sm:inline">Oś czasu</span>
+          <span className="sm:hidden">Oś czasu</span>
         </button>
       </div>
     </div>
@@ -2884,7 +2884,7 @@ function DayScheduleView({ entries, freeDays, onEdit, onAddNew }) {
   return (
     <div className="space-y-6">
       <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
-        <Clock size={22} /> Grafik {mode === "dzien" ? "dnia" : "miesiąca"}
+        <Clock size={22} /> Oś czasu {mode === "dzien" ? "dnia" : "miesiąca"}
       </h2>
 
       <div className="flex gap-2">
@@ -4169,7 +4169,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-5">
           <FormField label="Data">
             <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.data} onChange={(e) => onChange("data", e.target.value)} />
           </FormField>
@@ -4265,9 +4265,15 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
                 <FormField label="Godzina rozpoczęcia">
                   <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godzinaStart} onChange={(e) => onChange("godzinaStart", e.target.value)} />
                 </FormField>
-                <FormField label="Przewidywany czas pracy (h)">
+                <FormField label="Czas pracy (h)">
                   <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 2" />
                 </FormField>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <Wallet size={13} color={PRIMARY_DARK} />
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: PRIMARY_DARK }}>Rozliczenie</span>
+                <span className="flex-1 h-px" style={{ background: LINE_COLOR }} />
               </div>
 
               <FormField label="Zarobki (zł)">
