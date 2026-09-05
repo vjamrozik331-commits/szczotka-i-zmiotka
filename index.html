@@ -390,7 +390,7 @@ function fmtHM(min) {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
-function DayTimelineBlock({ dateStr, entries, onEdit }) {
+function DayTimelineBlock({ dateStr, entries, onEdit, onAddNew }) {
   const segments = useMemo(() => buildDayTimeline(entries), [entries]);
   const totalMin = DAY_TIMELINE_END - DAY_TIMELINE_START;
   const hourMarks = [];
@@ -410,13 +410,15 @@ function DayTimelineBlock({ dateStr, entries, onEdit }) {
             const height = ((seg.end - seg.start) / totalMin) * 320;
             if (seg.type === "free") {
               return (
-                <div
+                <button
                   key={idx}
-                  className="absolute rounded-md flex items-center justify-center"
+                  onClick={() => onAddNew && onAddNew(dateStr, fmtHM(seg.start))}
+                  className="absolute rounded-md flex items-center justify-center hover:bg-emerald-50 transition"
                   style={{ top, height: Math.max(height, 14), left: 6, right: 0, background: "#FAFBFA", border: "1px dashed #CBD6D1" }}
+                  title={`Zaplanuj zlecenie od ${fmtHM(seg.start)}`}
                 >
-                  {height > 24 && <span className="text-[10px]" style={{ color: "#8CA098" }}>wolne</span>}
-                </div>
+                  {height > 24 && <span className="text-[10px] flex items-center gap-1" style={{ color: "#8CA098" }}><Plus size={10} /> wolne</span>}
+                </button>
               );
             }
             return (
@@ -440,10 +442,16 @@ function DayTimelineBlock({ dateStr, entries, onEdit }) {
           <div className="text-sm text-center py-4" style={{ color: "#8CA098" }}>Brak wolnych okien tego dnia.</div>
         ) : (
           segments.filter((s) => s.type === "free" && s.end - s.start >= 15).map((s, idx) => (
-            <div key={idx} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+            <button
+              key={idx}
+              onClick={() => onAddNew && onAddNew(dateStr, fmtHM(s.start))}
+              className="w-full flex items-center justify-between rounded-lg px-3 py-2 hover:bg-emerald-50 transition"
+              style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}
+              title={`Zaplanuj zlecenie od ${fmtHM(s.start)}`}
+            >
               <span className="text-sm font-semibold" style={{ color: INK }}>{fmtHM(s.start)}–{fmtHM(s.end)}</span>
-              <span className="text-xs" style={{ color: "#8CA098" }}>{((s.end - s.start) / 60).toFixed(1).replace(".0", "")}h wolne</span>
-            </div>
+              <span className="text-xs flex items-center gap-1" style={{ color: "#8CA098" }}><Plus size={11} />{((s.end - s.start) / 60).toFixed(1).replace(".0", "")}h wolne</span>
+            </button>
           ))
         )}
       </div>
@@ -1406,11 +1414,11 @@ function App() {
     return (entries || []).filter((e) => e.data === dateStr);
   }
 
-  const openAddClientForm = useCallback((dateStr) => {
+  const openAddClientForm = useCallback((dateStr, godzinaStart) => {
     setEditingId(null);
     setFormType("klient");
     const d = dateStr || `${year}-${String(activeTab + 1).padStart(2, "0")}-01`;
-    setForm({ ...emptyForm, data: d, statusZlecenia: defaultOrderStatus(d) });
+    setForm({ ...emptyForm, data: d, statusZlecenia: defaultOrderStatus(d), godzinaStart: godzinaStart || "" });
     setShowForm(true);
   }, [activeTab, year]);
 
@@ -1822,7 +1830,7 @@ function App() {
             searchScope={searchScope}
             setSearchScope={setSearchScope}
             isYearSearch={isYearSearch}
-            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
+            onAddForDay={(dateStr, godzinaStart) => openAddClientForm(dateStr, godzinaStart)}
             onEdit={openEditForm}
             onDelete={deleteEntry}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setSearch(""); }}
@@ -1849,7 +1857,7 @@ function App() {
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
             onMove={openMove}
-            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
+            onAddForDay={(dateStr, godzinaStart) => openAddClientForm(dateStr, godzinaStart)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
         )}
@@ -1862,7 +1870,7 @@ function App() {
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
             onMove={openMove}
-            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
+            onAddForDay={(dateStr, godzinaStart) => openAddClientForm(dateStr, godzinaStart)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
         )}
@@ -1877,7 +1885,7 @@ function App() {
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
             onMove={openMove}
-            onAddForDay={(dateStr) => openAddClientForm(dateStr)}
+            onAddForDay={(dateStr, godzinaStart) => openAddClientForm(dateStr, godzinaStart)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
         )}
@@ -1919,7 +1927,7 @@ function App() {
           <FakturyView data={invoicesData} year={year} initialMonth={activeTab} onEdit={openEditForm} onToggleInvoice={toggleInvoiceIssued} onSetPaymentStatus={setPaymentStatus} />
         )}
         {view === "grafik" && (
-          <DayScheduleView entries={entries} onEdit={openEditForm} />
+          <DayScheduleView entries={entries} freeDays={freeDays} onEdit={openEditForm} onAddNew={openAddClientForm} />
         )}
         {view === "clients" && (
           <ClientsView
@@ -2441,7 +2449,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
           dateStr={dayDetail}
           entries={(calendarCells.find((c) => c && c.dateStr === dayDetail) || {}).entries || []}
           onEdit={(e) => { onEdit(e); setDayDetail(null); }}
-          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onAddNew={(dateStr, godzinaStart) => { onAddForDay(dateStr, godzinaStart); setDayDetail(null); }}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
           onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
@@ -2744,7 +2752,7 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
           dateStr={dayDetail}
           entries={(entries || []).filter((e) => e.data === dayDetail)}
           onEdit={(e) => { onEdit(e); setDayDetail(null); }}
-          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onAddNew={(dateStr, godzinaStart) => { onAddForDay(dateStr, godzinaStart); setDayDetail(null); }}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
           onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
@@ -2770,43 +2778,167 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
   );
 }
 
-function DayScheduleView({ entries, onEdit }) {
+function MonthScheduleGrid({ year, month, entries, freeDays, onSelectDay }) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const freeDatesSet = useMemo(() => new Set((freeDays || []).map((d) => d.date)), [freeDays]);
+  const today = todayStr();
+  const hourLabels = [7, 9, 11, 13, 15, 18];
+
+  const rows = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const isFree = freeDatesSet.has(dateStr);
+    const isToday = dateStr === today;
+    const holidayName = polishHolidayName(dateStr);
+    const dayEntries = entries.filter((e) => e.data === dateStr && e.statusZlecenia !== "Odwołane" && e.godzinaStart);
+    const totalMin = DAY_TIMELINE_END - DAY_TIMELINE_START;
+    const blocks = dayEntries.map((e) => {
+      const start = Math.max(DAY_TIMELINE_START, timeToMinutes(e.godzinaStart));
+      const dur = (Number(e.godziny) || 2) * 60;
+      const end = Math.min(DAY_TIMELINE_END, start + dur);
+      return {
+        left: ((start - DAY_TIMELINE_START) / totalMin) * 100,
+        width: Math.max(((end - start) / totalMin) * 100, 2),
+        isPrivate: e.typWpisu === "prywatne",
+      };
+    });
+    rows.push({ d, dateStr, isFree, isToday, holidayName, blocks });
+  }
+
+  return (
+    <div>
+      <div className="flex text-[9px] mb-1" style={{ color: "#8CA098", marginLeft: 30 }}>
+        {hourLabels.map((h, idx) => (
+          <span key={h} style={{ flex: 1, textAlign: idx === hourLabels.length - 1 ? "right" : "left" }}>{h}</span>
+        ))}
+      </div>
+      <div className="space-y-0.5">
+        {rows.map((row) => (
+          <button
+            key={row.d}
+            onClick={() => onSelectDay(row.dateStr)}
+            className="w-full flex items-center gap-1.5 hover:opacity-80 transition"
+          >
+            <span
+              className="text-[10px] font-semibold flex-shrink-0 text-center rounded"
+              style={{
+                width: 22,
+                color: row.holidayName ? "#B23A2E" : row.isFree ? "#8A6A1F" : "#5B6E67",
+                border: row.isToday ? `1.5px solid ${PRIMARY_DARK}` : "none",
+              }}
+            >
+              {row.d}
+            </span>
+            <div
+              className="flex-1 relative overflow-hidden rounded"
+              style={{
+                height: 16,
+                background: row.isFree ? "#F5F2EA" : row.holidayName ? "#FBEAE7" : "#FAFBFA",
+                border: row.isToday ? `1.5px solid ${PRIMARY_DARK}` : "1px solid transparent",
+              }}
+            >
+              {row.isFree && <span className="absolute inset-0 flex items-center justify-center text-[9px]" style={{ color: "#8A6A1F" }}>wolne</span>}
+              {!row.isFree && row.blocks.map((b, i) => (
+                <div
+                  key={i}
+                  className="absolute top-0 bottom-0 rounded"
+                  style={{ left: `${b.left}%`, width: `${b.width}%`, background: b.isPrivate ? "#EEEDFE" : PRIMARY }}
+                />
+              ))}
+            </div>
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-3 mt-3 text-[10px]" style={{ color: "#8CA098" }}>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: PRIMARY }} />zlecenie</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#EEEDFE" }} />prywatne</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#F5F2EA" }} />wolne</span>
+      </div>
+      <div className="text-[10px] mt-1" style={{ color: "#8CA098" }}>Dotknij dnia, żeby zobaczyć szczegóły i wolne okna.</div>
+    </div>
+  );
+}
+
+function DayScheduleView({ entries, freeDays, onEdit, onAddNew }) {
+  const [mode, setMode] = useState("dzien"); // "dzien" | "miesiac"
   const [dateStr, setDateStr] = useState(() => todayStr());
   const dayEntries = useMemo(
     () => entries.filter((e) => e.data === dateStr && e.statusZlecenia !== "Odwołane"),
     [entries, dateStr]
   );
   const dateLabel = `${dateStr.slice(8, 10)}.${dateStr.slice(5, 7)}.${dateStr.slice(0, 4)}`;
+  const curDate = new Date(dateStr + "T00:00:00");
+  const curYear = curDate.getFullYear();
+  const curMonth = curDate.getMonth();
 
   function shiftDay(delta) {
     const d = new Date(dateStr + "T00:00:00");
     d.setDate(d.getDate() + delta);
     setDateStr(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
   }
+  function shiftMonth(delta) {
+    const d = new Date(curYear, curMonth + delta, 1);
+    setDateStr(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+  }
 
   return (
     <div className="space-y-6">
       <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
-        <Clock size={22} /> Grafik dnia
+        <Clock size={22} /> Grafik {mode === "dzien" ? "dnia" : "miesiąca"}
       </h2>
 
-      <div className="flex items-center justify-center gap-3">
-        <button onClick={() => shiftDay(-1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-          <ChevronLeft size={16} color={PRIMARY_DARK} />
+      <div className="flex gap-2">
+        <button onClick={() => setMode("dzien")} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style={{ background: mode === "dzien" ? PRIMARY_DARK : "#F0EDE6", color: mode === "dzien" ? "white" : "#6B5D4A" }}>
+          Dzień
         </button>
-        <div className="text-center min-w-[160px]">
-          <div className="capitalize text-sm font-semibold" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{weekdayName(dateStr)}</div>
-          <div className="text-xs" style={{ color: "#8CA098" }}>{dateLabel}</div>
-        </div>
-        <button onClick={() => shiftDay(1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-          <ChevronRight size={16} color={PRIMARY_DARK} />
+        <button onClick={() => setMode("miesiac")} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style={{ background: mode === "miesiac" ? PRIMARY_DARK : "#F0EDE6", color: mode === "miesiac" ? "white" : "#6B5D4A" }}>
+          Miesiąc
         </button>
-        {dateStr !== todayStr() && (
-          <button onClick={() => setDateStr(todayStr())} className="text-xs underline ml-1" style={{ color: "#2A5C8A" }}>dziś</button>
-        )}
       </div>
 
-      <DayTimelineBlock dateStr={dateStr} entries={dayEntries} onEdit={onEdit} />
+      {mode === "dzien" ? (
+        <>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={() => shiftDay(-1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronLeft size={16} color={PRIMARY_DARK} />
+            </button>
+            <div className="text-center min-w-[160px]">
+              <div className="capitalize text-sm font-semibold" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{weekdayName(dateStr)}</div>
+              <div className="text-xs" style={{ color: "#8CA098" }}>{dateLabel}</div>
+            </div>
+            <button onClick={() => shiftDay(1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronRight size={16} color={PRIMARY_DARK} />
+            </button>
+            {dateStr !== todayStr() && (
+              <button onClick={() => setDateStr(todayStr())} className="text-xs underline ml-1" style={{ color: "#2A5C8A" }}>dziś</button>
+            )}
+          </div>
+
+          <DayTimelineBlock dateStr={dateStr} entries={dayEntries} onEdit={onEdit} onAddNew={onAddNew} />
+        </>
+      ) : (
+        <>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={() => shiftMonth(-1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronLeft size={16} color={PRIMARY_DARK} />
+            </button>
+            <div className="text-center min-w-[160px] capitalize text-sm font-semibold" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>
+              {MONTH_NAMES[curMonth]} {curYear}
+            </div>
+            <button onClick={() => shiftMonth(1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronRight size={16} color={PRIMARY_DARK} />
+            </button>
+          </div>
+
+          <MonthScheduleGrid
+            year={curYear}
+            month={curMonth}
+            entries={entries}
+            freeDays={freeDays}
+            onSelectDay={(d) => { setDateStr(d); setMode("dzien"); }}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -3000,7 +3132,7 @@ function PrivateView({ entries, year, activeMonth, onAddNew, onEdit, onDelete, o
           dateStr={dayDetail}
           entries={entries.filter((e) => e.data === dayDetail)}
           onEdit={(e) => { onEdit(e); setDayDetail(null); }}
-          onAddNew={(dateStr) => { onAddNew(dateStr); setDayDetail(null); }}
+          onAddNew={(dateStr, godzinaStart) => { onAddNew(dateStr, godzinaStart); setDayDetail(null); }}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
           onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
@@ -3192,7 +3324,7 @@ function CompletedView({ data, entries, year, activeMonth, onEdit, onDelete, onS
           dateStr={dayDetail}
           entries={(entries || []).filter((e) => e.data === dayDetail)}
           onEdit={(e) => { onEdit(e); setDayDetail(null); }}
-          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onAddNew={(dateStr, godzinaStart) => { onAddForDay(dateStr, godzinaStart); setDayDetail(null); }}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
           onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
@@ -3311,7 +3443,7 @@ function UpcomingView({ data, year, activeMonth, entries, onEdit, onDelete, onSe
           dateStr={dayDetail}
           entries={(entries || []).filter((e) => e.data === dayDetail)}
           onEdit={(e) => { onEdit(e); setDayDetail(null); }}
-          onAddNew={(dateStr) => { onAddForDay(dateStr); setDayDetail(null); }}
+          onAddNew={(dateStr, godzinaStart) => { onAddForDay(dateStr, godzinaStart); setDayDetail(null); }}
           onDelete={onDelete}
           onSetStatus={onSetStatus}
           onMarkDone={(e) => { onMarkDone(e); setDayDetail(null); }}
@@ -4336,7 +4468,7 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
         <div className="overflow-y-auto flex-1">
           {mode === "oś" ? (
             <div className="px-5 py-4">
-              <DayTimelineBlock dateStr={dateStr} entries={sorted} onEdit={onEdit} />
+              <DayTimelineBlock dateStr={dateStr} entries={sorted} onEdit={onEdit} onAddNew={onAddNew} />
             </div>
           ) : sorted.length === 0 ? (
             <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak wpisów tego dnia.</div>
