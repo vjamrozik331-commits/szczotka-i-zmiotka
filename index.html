@@ -4140,6 +4140,34 @@ function MonthlyTable({ months, totals }) {
 /* ------------------------------------------------------------------ */
 /* Entry Form Modal                                                     */
 /* ------------------------------------------------------------------ */
+function TimeSelect({ value, onChange }) {
+  const [hh, mm] = (value || "").split(":");
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  const minutes = ["00", "15", "30", "45"];
+  return (
+    <div className="flex gap-2">
+      <select
+        className={inputCls}
+        style={{ borderColor: LINE_COLOR }}
+        value={hh || ""}
+        onChange={(e) => onChange(`${e.target.value}:${mm || "00"}`)}
+      >
+        <option value="">GG</option>
+        {hours.map((h) => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <select
+        className={inputCls}
+        style={{ borderColor: LINE_COLOR }}
+        value={mm || ""}
+        onChange={(e) => onChange(`${hh || "00"}:${e.target.value}`)}
+      >
+        <option value="">MM</option>
+        {minutes.map((m) => <option key={m} value={m}>{m}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function FormField({ label, children }) {
   return (
     <label className="block">
@@ -4263,7 +4291,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
 
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Godzina rozpoczęcia">
-                  <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godzinaStart} onChange={(e) => onChange("godzinaStart", e.target.value)} />
+                  <TimeSelect value={form.godzinaStart} onChange={(v) => onChange("godzinaStart", v)} />
                 </FormField>
                 <FormField label="Czas pracy (h)">
                   <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 2" />
@@ -4348,7 +4376,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
 
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Godzina">
-                  <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godzinaStart} onChange={(e) => onChange("godzinaStart", e.target.value)} />
+                  <TimeSelect value={form.godzinaStart} onChange={(v) => onChange("godzinaStart", v)} />
                 </FormField>
                 <FormField label="Czas trwania (h)">
                   <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 1" />
@@ -4719,7 +4747,7 @@ function MoveModal({ moveInfo, onChange, onClose, onSave }) {
             <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={moveInfo.newDate} onChange={(e) => onChange("newDate", e.target.value)} />
           </FormField>
           <FormField label="Nowa godzina (opcjonalnie)">
-            <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={moveInfo.newTime} onChange={(e) => onChange("newTime", e.target.value)} />
+            <TimeSelect value={moveInfo.newTime} onChange={(v) => onChange("newTime", v)} />
           </FormField>
         </div>
         <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
