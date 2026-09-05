@@ -359,6 +359,97 @@ function fmtTimeRange(start, hours) {
   const fmt = (min) => `${String(Math.floor((min % 1440) / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
   return `${fmt(startMin)}–${fmt(endMin)}`;
 }
+
+// Oś czasu dnia: dzień roboczy 7:00–18:00, bloki zajęte + luki wolnego czasu.
+const DAY_TIMELINE_START = 7 * 60;
+const DAY_TIMELINE_END = 18 * 60;
+function buildDayTimeline(entries) {
+  const busy = (entries || [])
+    .filter((e) => e.statusZlecenia !== "Odwołane" && e.godzinaStart)
+    .map((e) => {
+      const start = Math.max(DAY_TIMELINE_START, timeToMinutes(e.godzinaStart));
+      const dur = (Number(e.godziny) || 2) * 60;
+      const end = Math.min(DAY_TIMELINE_END, start + dur);
+      const isPrivate = e.typWpisu === "prywatne";
+      return { start, end, entry: e, isPrivate, label: e.klient || e.opisWydatkow || "—" };
+    })
+    .filter((b) => b.end > b.start)
+    .sort((a, b) => a.start - b.start);
+
+  const segments = [];
+  let cursor = DAY_TIMELINE_START;
+  busy.forEach((b) => {
+    if (b.start > cursor) segments.push({ type: "free", start: cursor, end: b.start });
+    segments.push({ type: "busy", start: b.start, end: b.end, label: b.label, isPrivate: b.isPrivate, entry: b.entry });
+    cursor = Math.max(cursor, b.end);
+  });
+  if (cursor < DAY_TIMELINE_END) segments.push({ type: "free", start: cursor, end: DAY_TIMELINE_END });
+  return segments;
+}
+function fmtHM(min) {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+function DayTimelineBlock({ dateStr, entries, onEdit }) {
+  const segments = useMemo(() => buildDayTimeline(entries), [entries]);
+  const totalMin = DAY_TIMELINE_END - DAY_TIMELINE_START;
+  const hourMarks = [];
+  for (let h = 7; h <= 18; h += 2) hourMarks.push(h);
+
+  return (
+    <div>
+      <div className="flex rounded-xl p-3" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+        <div className="flex flex-col flex-shrink-0" style={{ width: 40 }}>
+          {hourMarks.map((h) => (
+            <div key={h} style={{ height: `${(120 / totalMin) * 100}%`, fontSize: "0.65rem", color: "#8CA098" }}>{h}:00</div>
+          ))}
+        </div>
+        <div className="relative flex-1" style={{ borderLeft: `1px solid ${LINE_COLOR}`, height: 320 }}>
+          {segments.map((seg, idx) => {
+            const top = ((seg.start - DAY_TIMELINE_START) / totalMin) * 320;
+            const height = ((seg.end - seg.start) / totalMin) * 320;
+            if (seg.type === "free") {
+              return (
+                <div
+                  key={idx}
+                  className="absolute rounded-md flex items-center justify-center"
+                  style={{ top, height: Math.max(height, 14), left: 6, right: 0, background: "#FAFBFA", border: "1px dashed #CBD6D1" }}
+                >
+                  {height > 24 && <span className="text-[10px]" style={{ color: "#8CA098" }}>wolne</span>}
+                </div>
+              );
+            }
+            return (
+              <button
+                key={idx}
+                onClick={() => onEdit && onEdit(seg.entry)}
+                className="absolute rounded-md text-left px-2 py-1 overflow-hidden hover:opacity-90 transition"
+                style={{ top, height: Math.max(height, 20), left: 6, right: 0, background: seg.isPrivate ? "#EEEDFE" : PRIMARY }}
+              >
+                <div className="text-[11px] font-bold truncate" style={{ color: seg.isPrivate ? PRIVATE_PURPLE : "#fff" }}>{seg.label}</div>
+                {height > 30 && <div className="text-[10px] truncate" style={{ color: seg.isPrivate ? "#7F77DD" : MINT }}>{fmtHM(seg.start)}–{fmtHM(seg.end)}</div>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="text-xs font-semibold uppercase tracking-wide mt-4 mb-1.5" style={{ color: "#5B6E67" }}>Wolne okna</div>
+      <div className="space-y-1.5">
+        {segments.filter((s) => s.type === "free" && s.end - s.start >= 15).length === 0 ? (
+          <div className="text-sm text-center py-4" style={{ color: "#8CA098" }}>Brak wolnych okien tego dnia.</div>
+        ) : (
+          segments.filter((s) => s.type === "free" && s.end - s.start >= 15).map((s, idx) => (
+            <div key={idx} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: SURFACE, border: `1px solid ${LINE_COLOR}` }}>
+              <span className="text-sm font-semibold" style={{ color: INK }}>{fmtHM(s.start)}–{fmtHM(s.end)}</span>
+              <span className="text-xs" style={{ color: "#8CA098" }}>{((s.end - s.start) / 60).toFixed(1).replace(".0", "")}h wolne</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 function findConflict(entries, payload, excludeId) {
   if (!payload.godzinaStart || !payload.data) return null;
   const startA = timeToMinutes(payload.godzinaStart);
@@ -1711,6 +1802,7 @@ function App() {
         onGoOverdue={() => setView("overdue")}
         onGoSummary={() => setView("summary")}
         onGoClients={() => setView("clients")}
+        onGoSchedule={() => setView("grafik")}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-24 pt-4">
@@ -1825,6 +1917,9 @@ function App() {
         )}
         {view === "faktury" && (
           <FakturyView data={invoicesData} year={year} initialMonth={activeTab} onEdit={openEditForm} onToggleInvoice={toggleInvoiceIssued} onSetPaymentStatus={setPaymentStatus} />
+        )}
+        {view === "grafik" && (
+          <DayScheduleView entries={entries} onEdit={openEditForm} />
         )}
         {view === "clients" && (
           <ClientsView
@@ -2159,7 +2254,7 @@ function TabBar({ activeTab, view, year, onSelectMonth, yearData }) {
   );
 }
 
-function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, privateCount, freeDaysCount, expensesCount, onAddClient, onAddPurchase, onGoExpenses, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients }) {
+function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoicesCount, privateCount, freeDaysCount, expensesCount, onAddClient, onAddPurchase, onGoExpenses, onAddPrivate, onAddFreeDay, onGoUpcoming, onGoCompleted, onGoFaktury, onGoOverdue, onGoSummary, onGoClients, onGoSchedule }) {
   const btnCls = "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 sm:px-4 py-2 rounded-lg text-[9px] sm:text-sm font-semibold transition hover:opacity-90 text-center leading-tight";
   const Badge = ({ count, activeBg, inactiveBg }) => count > 0 ? (
     <span
@@ -2232,6 +2327,11 @@ function ActionBar({ view, upcomingCount, overdueCount, completedCount, invoices
         <button onClick={onGoSummary} className={btnCls} style={{ background: view === "summary" ? PRIMARY_DARK : MINT, color: view === "summary" ? "white" : PRIMARY_DARK, border: "none" }}>
           <TrendingUp size={16} />
           <span>Podsumowanie</span>
+        </button>
+        <button onClick={onGoSchedule} className={btnCls} style={{ background: view === "grafik" ? PRIMARY_DARK : "#EAF1F8", color: view === "grafik" ? "white" : "#2A5C8A", border: "none" }}>
+          <Clock size={16} />
+          <span className="hidden sm:inline">Grafik dnia</span>
+          <span className="sm:hidden">Grafik</span>
         </button>
       </div>
     </div>
@@ -2666,6 +2766,47 @@ function OverdueView({ overdue, entries, onEdit, onDelete, onSetStatus, onMarkDo
           onClose={() => setDetail(null)}
         />
       )}
+    </div>
+  );
+}
+
+function DayScheduleView({ entries, onEdit }) {
+  const [dateStr, setDateStr] = useState(() => todayStr());
+  const dayEntries = useMemo(
+    () => entries.filter((e) => e.data === dateStr && e.statusZlecenia !== "Odwołane"),
+    [entries, dateStr]
+  );
+  const dateLabel = `${dateStr.slice(8, 10)}.${dateStr.slice(5, 7)}.${dateStr.slice(0, 4)}`;
+
+  function shiftDay(delta) {
+    const d = new Date(dateStr + "T00:00:00");
+    d.setDate(d.getDate() + delta);
+    setDateStr(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
+        <Clock size={22} /> Grafik dnia
+      </h2>
+
+      <div className="flex items-center justify-center gap-3">
+        <button onClick={() => shiftDay(-1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+          <ChevronLeft size={16} color={PRIMARY_DARK} />
+        </button>
+        <div className="text-center min-w-[160px]">
+          <div className="capitalize text-sm font-semibold" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{weekdayName(dateStr)}</div>
+          <div className="text-xs" style={{ color: "#8CA098" }}>{dateLabel}</div>
+        </div>
+        <button onClick={() => shiftDay(1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+          <ChevronRight size={16} color={PRIMARY_DARK} />
+        </button>
+        {dateStr !== todayStr() && (
+          <button onClick={() => setDateStr(todayStr())} className="text-xs underline ml-1" style={{ color: "#2A5C8A" }}>dziś</button>
+        )}
+      </div>
+
+      <DayTimelineBlock dateStr={dateStr} entries={dayEntries} onEdit={onEdit} />
     </div>
   );
 }
@@ -4171,6 +4312,7 @@ const ORDER_STATUS_BADGE = {
 function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetStatus, onMarkDone, onMove, onClose }) {
   const sorted = entries.slice().sort(compareEntries);
   const dateLabel = dateStr ? `${dateStr.slice(8, 10)}.${dateStr.slice(5, 7)}.${dateStr.slice(0, 4)}` : "";
+  const [mode, setMode] = useState("lista"); // "lista" | "oś"
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
@@ -4182,8 +4324,21 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
 
+        <div className="flex gap-2 px-5 pt-3 flex-shrink-0">
+          <button onClick={() => setMode("lista")} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style={{ background: mode === "lista" ? PRIMARY_DARK : "#F0EDE6", color: mode === "lista" ? "white" : "#6B5D4A" }}>
+            Lista
+          </button>
+          <button onClick={() => setMode("oś")} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style={{ background: mode === "oś" ? PRIMARY_DARK : "#F0EDE6", color: mode === "oś" ? "white" : "#6B5D4A" }}>
+            Oś czasu
+          </button>
+        </div>
+
         <div className="overflow-y-auto flex-1">
-          {sorted.length === 0 ? (
+          {mode === "oś" ? (
+            <div className="px-5 py-4">
+              <DayTimelineBlock dateStr={dateStr} entries={sorted} onEdit={onEdit} />
+            </div>
+          ) : sorted.length === 0 ? (
             <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak wpisów tego dnia.</div>
           ) : (
             <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
