@@ -4294,7 +4294,9 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
                   <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godzinaStart} onChange={(e) => onChange("godzinaStart", e.target.value)} />
                 </FormField>
                 <FormField label="Czas pracy (h)">
-                  <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR, width: "45%" }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 2" />
+                  <div className="flex justify-end">
+                    <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR, width: "45%" }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 2" />
+                  </div>
                 </FormField>
               </div>
 
