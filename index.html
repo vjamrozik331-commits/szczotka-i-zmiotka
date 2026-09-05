@@ -4168,10 +4168,10 @@ function TimeSelect({ value, onChange }) {
   );
 }
 
-function FormField({ label, children }) {
+function FormField({ label, children, align }) {
   return (
     <label className="block">
-      <span className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "#5B6E67" }}>{label}</span>
+      <span className={`block text-[11px] font-semibold uppercase tracking-wide mb-1 ${align === "right" ? "text-right" : ""}`} style={{ color: "#5B6E67" }}>{label}</span>
       {children}
     </label>
   );
@@ -4293,7 +4293,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
                 <FormField label="Godzina rozpoczęcia">
                   <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={form.godzinaStart} onChange={(e) => onChange("godzinaStart", e.target.value)} />
                 </FormField>
-                <FormField label="Czas pracy (h)">
+                <FormField label="Czas pracy (h)" align="right">
                   <div className="flex justify-end">
                     <input type="number" step="0.5" className={inputCls} style={{ borderColor: LINE_COLOR, width: "45%" }} value={form.godziny} onChange={(e) => onChange("godziny", e.target.value)} placeholder="np. 2" />
                   </div>
