@@ -136,7 +136,6 @@ const CalendarClock = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="1
 const AlertTriangle = (p) => <Icon {...p}><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></Icon>;
 const CheckCircle2 = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></Icon>;
 const Ban = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></Icon>;
-const Move = (p) => <Icon {...p}><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></Icon>;
 const Umbrella = (p) => <Icon {...p}><path d="M22 12a10 10 0 1 0-20 0"/><path d="M12 12v8a2 2 0 0 0 4 0"/><path d="M12 2v2"/><path d="M2 12h20"/></Icon>;
 const Shield = (p) => <Icon {...p}><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></Icon>;
 
@@ -215,11 +214,6 @@ function weekdayName(dateStr) {
   const d = new Date(dateStr + "T00:00:00");
   const idx = (d.getDay() + 6) % 7;
   return ["poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"][idx];
-}
-function isWeekend(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  const day = d.getDay();
-  return day === 0 || day === 6;
 }
 function todayStr() {
   const d = new Date();
@@ -485,19 +479,6 @@ function compareEntries(a, b) {
   return a.id - b.id;
 }
 
-// One-time migration helper: builds an explicit client list from historical entries
-// (used the first time the app runs, before a real "clients" list exists yet).
-function computeBusyDates(entriesArr, freeDaysArr) {
-  const set = new Set();
-  (entriesArr || []).forEach((e) => {
-    if (!e.data || e.statusZlecenia === "Odwołane") return;
-    const isAppointment = (e.klient && e.klient.trim()) || e.typWpisu === "prywatne";
-    if (isAppointment) set.add(e.data);
-  });
-  (freeDaysArr || []).forEach((d) => { if (d.date) set.add(d.date); });
-  return Array.from(set);
-}
-
 // Publiczna dostępność godzinowa (dla formularza rezerwacji na stronie WWW):
 // - offDates: dni całkowicie niedostępne (dni wolne Vanessy) — cały dzień zablokowany
 // - slotsByDate: zajęte przedziały godzinowe każdego dnia, wyliczone tak samo jak
@@ -625,8 +606,10 @@ function LockScreen({ onUnlock }) {
   }, [webAuthnAvailable]);
 
   function handlePinDigit(d) {
-    if (pin.length >= 4) return;
-    const next = pin + d;
+    // Jeśli poprzednia próba była błędna (4 cyfry, czekają na wyczyszczenie po błędzie) —
+    // nowa cyfra od razu zaczyna nowe wpisywanie, zamiast być cicho ignorowana.
+    const base = pin.length >= 4 ? "" : pin;
+    const next = base + d;
     setPin(next);
     setError("");
     if (next.length === 4) {
@@ -634,7 +617,7 @@ function LockScreen({ onUnlock }) {
         onUnlock();
       } else {
         setError("Błędny PIN");
-        setTimeout(() => setPin(""), 400);
+        setTimeout(() => setPin((p) => (p === next ? "" : p)), 500);
       }
     }
   }
@@ -885,13 +868,7 @@ function App() {
   const [search, setSearch] = useState("");
   const [searchScope, setSearchScope] = useState("month"); // "month" | "year"
   const [conflictInfo, setConflictInfo] = useState(null);
-  const [moveInfo, setMoveInfo] = useState(null);
-  const [moveConflict, setMoveConflict] = useState(null);
-  const [showFreeDaysList, setShowFreeDaysList] = useState(false);
-  const [showPrivateList, setShowPrivateList] = useState(false);
   const [editingFreeDayGroup, setEditingFreeDayGroup] = useState(null); // { ids, startDate, endDate, opis } lub null
-  const [movingFreeDayGroup, setMovingFreeDayGroup] = useState(null); // { ids, startDate, endDate, opis } lub null
-  const [movingFreeDayDate, setMovingFreeDayDate] = useState("");
   const [showFreeDayForm, setShowFreeDayForm] = useState(false);
   const [freeDayForm, setFreeDayForm] = useState({ start: "", end: "", opis: "" });
   const [freeDayConflict, setFreeDayConflict] = useState(null);
@@ -1610,29 +1587,6 @@ function App() {
     setConfirmDoneEntry(null);
   }
 
-  function openMove(entry) {
-    setMoveInfo({ id: entry.id, klient: entry.klient, opisWydatkow: entry.opisWydatkow, newDate: entry.data, newTime: entry.godzinaStart || "" });
-  }
-
-  function performMove(force) {
-    if (!moveInfo) return;
-    const original = entries.find((e) => e.id === moveInfo.id);
-    if (!original) { setMoveInfo(null); return; }
-    const payload = { ...original, data: moveInfo.newDate, godzinaStart: moveInfo.newTime };
-    if (!force && payload.godzinaStart) {
-      const conflict = findConflict(entries, payload, moveInfo.id);
-      if (conflict) {
-        setMoveConflict({ conflict });
-        return;
-      }
-    }
-    const next = entries.map((e) => (e.id === moveInfo.id ? { ...e, data: moveInfo.newDate, godzinaStart: moveInfo.newTime } : e));
-    setEntries(next);
-    syncToFirestore(next, freeDays);
-    setMoveInfo(null);
-    setMoveConflict(null);
-  }
-
   function openFreeDayForm(dateStr) {
     setEditingFreeDayGroup(null);
     setFreeDayForm({ start: dateStr || "", end: dateStr || "", opis: "" });
@@ -1690,30 +1644,6 @@ function App() {
     const next = freeDays.filter((d) => !ids.includes(d.id));
     setFreeDays(next);
     syncToFirestore(entries, next);
-  }
-
-  function openMoveFreeDayGroup(group) {
-    setMovingFreeDayGroup(group);
-    setMovingFreeDayDate(group.startDate);
-  }
-
-  function saveFreeDayMove() {
-    if (!movingFreeDayGroup || !movingFreeDayDate) return;
-    const oldStart = new Date(movingFreeDayGroup.startDate + "T00:00:00");
-    const newStart = new Date(movingFreeDayDate + "T00:00:00");
-    const deltaDays = Math.round((newStart - oldStart) / (1000 * 60 * 60 * 24));
-    const base = freeDays.filter((d) => !movingFreeDayGroup.ids.includes(d.id));
-    const moved = movingFreeDayGroup.ids.map((id) => {
-      const orig = freeDays.find((d) => d.id === id);
-      const d = new Date(orig.date + "T00:00:00");
-      d.setDate(d.getDate() + deltaDays);
-      const newDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return { ...orig, date: newDate };
-    });
-    const next = [...base, ...moved];
-    setFreeDays(next);
-    syncToFirestore(entries, next);
-    setMovingFreeDayGroup(null);
   }
 
   function openAddClientRecord() {
@@ -1836,10 +1766,8 @@ function App() {
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setSearch(""); }}
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
-            onMove={openMove}
             onRemoveFreeDay={(ids) => removeFreeDayGroup(ids)}
             onEditFreeDay={openEditFreeDayGroup}
-            onMoveFreeDay={openMoveFreeDayGroup}
             onGoUpcoming={() => setView("upcoming")}
             onSetPaymentStatus={setPaymentStatus}
             onToggleInvoice={toggleInvoiceIssued}
@@ -1856,7 +1784,6 @@ function App() {
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
-            onMove={openMove}
             onAddForDay={(dateStr, godzinaStart) => openAddClientForm(dateStr, godzinaStart)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
@@ -1869,7 +1796,6 @@ function App() {
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
-            onMove={openMove}
             onAddForDay={(dateStr, godzinaStart) => openAddClientForm(dateStr, godzinaStart)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
@@ -1884,7 +1810,6 @@ function App() {
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
-            onMove={openMove}
             onAddForDay={(dateStr, godzinaStart) => openAddClientForm(dateStr, godzinaStart)}
             onJumpToMonth={(monthIdx) => { setActiveTab(monthIdx); setView("month"); }}
           />
@@ -1899,7 +1824,6 @@ function App() {
             onDelete={deleteEntry}
             onSetStatus={setEntryStatus}
             onMarkDone={openMarkDone}
-            onMove={openMove}
           />
         )}
         {view === "wolne" && (
@@ -1909,7 +1833,6 @@ function App() {
             activeMonth={activeTab}
             onAddNew={openFreeDayForm}
             onEdit={openEditFreeDayGroup}
-            onMove={openMoveFreeDayGroup}
             onRemove={(group) => removeFreeDayGroup(group.ids)}
           />
         )}
@@ -2021,60 +1944,6 @@ function App() {
         />
       )}
 
-      {moveInfo && !moveConflict && (
-        <MoveModal
-          moveInfo={moveInfo}
-          onChange={(field, value) => setMoveInfo((m) => ({ ...m, [field]: value }))}
-          onClose={() => setMoveInfo(null)}
-          onSave={() => performMove(false)}
-        />
-      )}
-
-      {moveConflict && (
-        <ConfirmModal
-          title="Kolizja terminów"
-          message={`Nowy termin (${fmtTimeRange(moveInfo.newTime, entries.find((e) => e.id === moveInfo.id)?.godziny)}) nakłada się z wizytą u „${moveConflict.conflict.klient || moveConflict.conflict.opisWydatkow || "innego klienta"}” (${fmtTimeRange(moveConflict.conflict.godzinaStart, moveConflict.conflict.godziny)}) tego samego dnia. Czy mimo to przenieść ten termin?`}
-          confirmLabel="Przenieś mimo to"
-          onConfirm={() => performMove(true)}
-          onCancel={() => setMoveConflict(null)}
-        />
-      )}
-
-      {showFreeDaysList && !showFreeDayForm && !movingFreeDayGroup && (
-        <FreeDaysListModal
-          freeDays={freeDays}
-          year={year}
-          onAddNew={() => { setShowFreeDaysList(false); openFreeDayForm(); }}
-          onEdit={openEditFreeDayGroup}
-          onMove={openMoveFreeDayGroup}
-          onRemove={(group) => removeFreeDayGroup(group.ids)}
-          onClose={() => setShowFreeDaysList(false)}
-        />
-      )}
-
-      {showPrivateList && !showForm && !moveInfo && (
-        <PrivateListModal
-          entries={entries}
-          year={year}
-          onAddNew={() => { setShowPrivateList(false); openAddPrivateForm(); }}
-          onEdit={(entry) => { setShowPrivateList(false); openEditForm(entry); }}
-          onDelete={deleteEntry}
-          onSetStatus={setEntryStatus}
-          onMarkDone={openMarkDone}
-          onMove={(entry) => { setShowPrivateList(false); openMove(entry); }}
-          onClose={() => setShowPrivateList(false)}
-        />
-      )}
-
-      {movingFreeDayGroup && (
-        <FreeDayMoveModal
-          date={movingFreeDayDate}
-          onChange={setMovingFreeDayDate}
-          onClose={() => setMovingFreeDayGroup(null)}
-          onSave={saveFreeDayMove}
-        />
-      )}
-
       {showFreeDayForm && !freeDayConflict && (
         <FreeDayModal
           form={freeDayForm}
@@ -2160,11 +2029,11 @@ function Header({ saveState, onBackups, onUndo, undoCount, year, onYearChange })
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 rounded-lg border" style={{ borderColor: LINE_COLOR }}>
             <button onClick={() => onYearChange(year - 1)} className="p-1.5 rounded-l-lg hover:bg-gray-50 transition" title="Poprzedni rok">
-              <ChevronLeft size={15} color="#5B6E67" />
+              <ChevronLeft size={17} color="#5B6E67" />
             </button>
             <span style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIMARY_DARK, minWidth: 40, textAlign: "center" }}>{year}</span>
             <button onClick={() => onYearChange(year + 1)} className="p-1.5 rounded-r-lg hover:bg-gray-50 transition" title="Następny rok">
-              <ChevronRight size={15} color="#5B6E67" />
+              <ChevronRight size={17} color="#5B6E67" />
             </button>
           </div>
           <span className="hidden sm:flex items-center gap-1 text-xs" style={{ color: saveState === "error" ? CORAL : "#5B6E67" }}>
@@ -2497,7 +2366,7 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition hover:bg-gray-50"
           style={{ background: SURFACE, border: `1px dashed ${LINE_COLOR}`, color: "#5B6E67" }}
         >
-          <ChevronRight size={15} style={{ transform: isCollapsed ? "rotate(90deg)" : "rotate(-90deg)" }} />
+          <ChevronRight size={17} style={{ transform: isCollapsed ? "rotate(90deg)" : "rotate(-90deg)" }} />
           {isCollapsed ? "Pokaż wcześniejsze zlecenia" : "Ukryj wcześniejsze zlecenia"}
         </button>
       )}
@@ -2659,26 +2528,21 @@ function EntriesTable({ entries, onEdit, onDelete, showMonth, onJumpToMonth, onS
               )}
             </div>
             <div className="flex items-center gap-1 mt-2">
+              <button onClick={() => onDelete(e.id)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                <Trash2 size={16} color={CORAL} />
+              </button>
               {isPlanned && (
-                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
-                  <CheckCircle2 size={15} color={PRIMARY} />
+                <button onClick={() => onMarkDone(e)} className="p-2 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
+                  <CheckCircle2 size={17} color={PRIMARY} />
                 </button>
               )}
               {!isZakup && !isCancelled && (
-                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
-                  <Ban size={15} color="#8CA098" />
+                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
+                  <Ban size={17} color="#8CA098" />
                 </button>
               )}
-              {!isCancelled && (
-                <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                  <Move size={14} color="#2A5C8A" />
-                </button>
-              )}
-              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                <Pencil size={14} color="#5B6E67" />
-              </button>
-              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                <Trash2 size={14} color={CORAL} />
+              <button onClick={() => onEdit(e)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                <Pencil size={16} color="#5B6E67" />
               </button>
             </div>
           </div>
@@ -2899,15 +2763,15 @@ function DayScheduleView({ entries, freeDays, onEdit, onAddNew }) {
       {mode === "dzien" ? (
         <>
           <div className="flex items-center justify-center gap-3">
-            <button onClick={() => shiftDay(-1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-              <ChevronLeft size={16} color={PRIMARY_DARK} />
+            <button onClick={() => shiftDay(-1)} className="p-2 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronLeft size={18} color={PRIMARY_DARK} />
             </button>
             <div className="text-center min-w-[160px]">
               <div className="capitalize text-sm font-semibold" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{weekdayName(dateStr)}</div>
               <div className="text-xs" style={{ color: "#8CA098" }}>{dateLabel}</div>
             </div>
-            <button onClick={() => shiftDay(1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-              <ChevronRight size={16} color={PRIMARY_DARK} />
+            <button onClick={() => shiftDay(1)} className="p-2 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronRight size={18} color={PRIMARY_DARK} />
             </button>
             {dateStr !== todayStr() && (
               <button onClick={() => setDateStr(todayStr())} className="text-xs underline ml-1" style={{ color: "#2A5C8A" }}>dziś</button>
@@ -2919,14 +2783,14 @@ function DayScheduleView({ entries, freeDays, onEdit, onAddNew }) {
       ) : (
         <>
           <div className="flex items-center justify-center gap-3">
-            <button onClick={() => shiftMonth(-1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-              <ChevronLeft size={16} color={PRIMARY_DARK} />
+            <button onClick={() => shiftMonth(-1)} className="p-2 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronLeft size={18} color={PRIMARY_DARK} />
             </button>
             <div className="text-center min-w-[160px] capitalize text-sm font-semibold" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>
               {MONTH_NAMES[curMonth]} {curYear}
             </div>
-            <button onClick={() => shiftMonth(1)} className="p-1.5 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-              <ChevronRight size={16} color={PRIMARY_DARK} />
+            <button onClick={() => shiftMonth(1)} className="p-2 rounded-md border hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+              <ChevronRight size={18} color={PRIMARY_DARK} />
             </button>
           </div>
 
@@ -2973,12 +2837,12 @@ function ExpensesView({ entries, year, activeMonth, onAddNew, onEdit, onDelete }
           Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({items.length}{items.length > 0 ? ` · ${fmtPLN(total)}` : ""})</span>
         </h3>
         <div className="flex items-center gap-2 ml-auto">
-          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronLeft size={15} color={CORAL} />
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={17} color={CORAL} />
           </button>
           <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: CORAL, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
-          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronRight size={15} color={CORAL} />
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={17} color={CORAL} />
           </button>
         </div>
       </div>
@@ -3005,11 +2869,11 @@ function ExpensesView({ entries, year, activeMonth, onAddNew, onEdit, onDelete }
                   </div>
                 </div>
                 <div className="flex items-center gap-1 mt-2">
-                  <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                    <Pencil size={14} color="#5B6E67" />
+                  <button onClick={() => onDelete(e.id)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                    <Trash2 size={16} color={CORAL} />
                   </button>
-                  <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                    <Trash2 size={14} color={CORAL} />
+                  <button onClick={() => onEdit(e)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                    <Pencil size={16} color="#5B6E67" />
                   </button>
                 </div>
               </div>
@@ -3051,12 +2915,12 @@ function PrivateView({ entries, year, activeMonth, onAddNew, onEdit, onDelete, o
           Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({items.length})</span>
         </h3>
         <div className="flex items-center gap-2 ml-auto">
-          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronLeft size={15} color={PRIVATE_PURPLE} />
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={17} color={PRIVATE_PURPLE} />
           </button>
           <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIVATE_PURPLE, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
-          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronRight size={15} color={PRIVATE_PURPLE} />
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={17} color={PRIVATE_PURPLE} />
           </button>
         </div>
       </div>
@@ -3097,26 +2961,21 @@ function PrivateView({ entries, year, activeMonth, onAddNew, onEdit, onDelete, o
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-2">
-                      {isPlanned && (
-                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
-                          <CheckCircle2 size={15} color={PRIMARY} />
-                        </button>
-                      )}
-                      {!isCancelled && (
-                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj termin">
-                          <Ban size={15} color="#8CA098" />
-                        </button>
-                      )}
-                      {!isCancelled && (
-                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                          <Move size={14} color="#2A5C8A" />
-                        </button>
-                      )}
-                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
+                      <button onClick={() => onDelete(e.id)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                        <Trash2 size={16} color={CORAL} />
                       </button>
-                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                        <Trash2 size={14} color={CORAL} />
+                      {isPlanned && (
+                        <button onClick={() => onMarkDone(e)} className="p-2 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
+                          <CheckCircle2 size={17} color={PRIMARY} />
+                        </button>
+                      )}
+                      {!isCancelled && (
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj termin">
+                          <Ban size={17} color="#8CA098" />
+                        </button>
+                      )}
+                      <button onClick={() => onEdit(e)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={16} color="#5B6E67" />
                       </button>
                     </div>
                   </div>
@@ -3176,12 +3035,12 @@ function FreeDaysView({ freeDays, year, activeMonth, onAddNew, onEdit, onMove, o
           Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({groups.length})</span>
         </h3>
         <div className="flex items-center gap-2 ml-auto">
-          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronLeft size={15} color="#8A6A1F" />
+          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={17} color="#8A6A1F" />
           </button>
           <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: "#8A6A1F", fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
-          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronRight size={15} color="#8A6A1F" />
+          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={17} color="#8A6A1F" />
           </button>
         </div>
       </div>
@@ -3221,14 +3080,11 @@ function FreeDaysView({ freeDays, year, activeMonth, onAddNew, onEdit, onMove, o
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-2">
-                      <button onClick={() => onMove(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                        <Move size={14} color="#2A5C8A" />
+                      <button onClick={() => onEdit(g)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={16} color="#5B6E67" />
                       </button>
-                      <button onClick={() => onEdit(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
-                      </button>
-                      <button onClick={() => onRemove(g)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
-                        <Trash2 size={14} color={CORAL} />
+                      <button onClick={() => onRemove(g)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
+                        <Trash2 size={16} color={CORAL} />
                       </button>
                     </div>
                   </div>
@@ -3286,12 +3142,12 @@ function CompletedView({ data, entries, year, activeMonth, onEdit, onDelete, onS
               Lista wykonanych <span style={{ color: "#8CA098", fontWeight: 400 }}>({monthEntries.length})</span>
             </h3>
             <div className="flex items-center gap-2 ml-auto">
-              <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-                <ChevronLeft size={15} color={PRIMARY_DARK} />
+              <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+                <ChevronLeft size={17} color={PRIMARY_DARK} />
               </button>
               <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIMARY_DARK, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
-              <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-                <ChevronRight size={15} color={PRIMARY_DARK} />
+              <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+                <ChevronRight size={17} color={PRIMARY_DARK} />
               </button>
             </div>
           </div>
@@ -3394,14 +3250,14 @@ function UpcomingView({ data, year, activeMonth, entries, onEdit, onDelete, onSe
               Miesiąc <span style={{ color: "#8CA098", fontWeight: 400 }}>({activeGroup ? activeGroup.entries.length : 0} {(activeGroup ? activeGroup.entries.length : 0) === 1 ? "zlecenie" : "zleceń"})</span>
             </h3>
             <div className="flex items-center gap-2 ml-auto">
-              <button onClick={() => setActiveKey(monthGroups[Math.max(0, activeIdx - 1)].key)} disabled={activeIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-                <ChevronLeft size={15} color="#2A5C8A" />
+              <button onClick={() => setActiveKey(monthGroups[Math.max(0, activeIdx - 1)].key)} disabled={activeIdx === 0} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+                <ChevronLeft size={17} color="#2A5C8A" />
               </button>
               <span className="text-sm font-semibold min-w-[130px] text-center" style={{ color: "#2A5C8A", fontFamily: DISPLAY_FONT }}>
                 {activeGroup ? MONTH_NAMES[activeGroup.month] : "—"}
               </span>
-              <button onClick={() => setActiveKey(monthGroups[Math.min(monthGroups.length - 1, activeIdx + 1)].key)} disabled={activeIdx >= monthGroups.length - 1} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-                <ChevronRight size={15} color="#2A5C8A" />
+              <button onClick={() => setActiveKey(monthGroups[Math.min(monthGroups.length - 1, activeIdx + 1)].key)} disabled={activeIdx >= monthGroups.length - 1} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+                <ChevronRight size={17} color="#2A5C8A" />
               </button>
             </div>
           </div>
@@ -3577,24 +3433,21 @@ function UpcomingList({ entries, overdue, done, onEdit, onDelete, onSetStatus, o
               )}
             </div>
             <div className="flex items-center gap-1 mt-2">
+              <button onClick={() => onDelete(e.id)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                <Trash2 size={16} color={CORAL} />
+              </button>
               {!done && (
-                <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
-                  <CheckCircle2 size={15} color={PRIMARY} />
+                <button onClick={() => onMarkDone(e)} className="p-2 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
+                  <CheckCircle2 size={17} color={PRIMARY} />
                 </button>
               )}
               {!done && (
-                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
-                  <Ban size={15} color="#8CA098" />
+                <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
+                  <Ban size={17} color="#8CA098" />
                 </button>
               )}
-              <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                <Move size={14} color="#2A5C8A" />
-              </button>
-              <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                <Pencil size={14} color="#5B6E67" />
-              </button>
-              <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                <Trash2 size={14} color={CORAL} />
+              <button onClick={() => onEdit(e)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                <Pencil size={16} color="#5B6E67" />
               </button>
             </div>
           </div>
@@ -3667,14 +3520,14 @@ function ClientsView({ clients, entries, search, setSearch, onAdd, onEdit, onDel
                     {c.adres && <div className="text-xs" style={{ color: "#8CA098" }}>{c.adres}</div>}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => onAddOrder(c)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Zaplanuj zlecenie dla tego klienta">
-                      <CalendarClock size={14} color={PRIMARY} />
+                    <button onClick={() => onDelete(c.id)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                      <Trash2 size={16} color={CORAL} />
                     </button>
-                    <button onClick={() => onEdit(c)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                      <Pencil size={14} color="#5B6E67" />
+                    <button onClick={() => onAddOrder(c)} className="p-2 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Zaplanuj zlecenie dla tego klienta">
+                      <CalendarClock size={16} color={PRIMARY} />
                     </button>
-                    <button onClick={() => onDelete(c.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                      <Trash2 size={14} color={CORAL} />
+                    <button onClick={() => onEdit(c)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                      <Pencil size={16} color="#5B6E67" />
                     </button>
                   </div>
                 </div>
@@ -3712,7 +3565,7 @@ function ClientFormModal({ form, isEditing, onChange, onClose, onSave }) {
           <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
             {isEditing ? "Edytuj klienta" : "Nowy klient"}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>
         <div className="p-5 space-y-4">
           <FormField label="Nazwa">
@@ -3821,12 +3674,12 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
           {sectionLabel} <span style={{ color: "#8CA098", fontWeight: 400 }}>({monthCount} {monthCount === 1 ? "zlecenie" : "zleceń"})</span>
         </h3>
         <div className="flex items-center gap-2 ml-auto">
-          <button onClick={onPrevMonth} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronLeft size={15} color={GOLD} />
+          <button onClick={onPrevMonth} disabled={monthIdx === 0} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronLeft size={17} color={GOLD} />
           </button>
           <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: GOLD, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
-          <button onClick={onNextMonth} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronRight size={15} color={GOLD} />
+          <button onClick={onNextMonth} disabled={monthIdx === 11} className="p-1.5 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
+            <ChevronRight size={17} color={GOLD} />
           </button>
         </div>
       </div>
@@ -3905,11 +3758,11 @@ function InvoicesSection({ monthIdx, onPrevMonth, onNextMonth, clients, monthCou
                           </button>
                           <button
                             onClick={() => onToggleInvoice(e.id)}
-                            className="flex-shrink-0 p-1 rounded-md border hover:bg-gray-50 transition"
+                            className="flex-shrink-0 p-1.5 rounded-md border hover:bg-gray-50 transition"
                             style={{ borderColor: LINE_COLOR }}
                             title={e.fakturaWystawiona ? "Wystawiona — kliknij, aby cofnąć" : "Do wystawienia — kliknij, aby oznaczyć jako wystawioną"}
                           >
-                            {e.fakturaWystawiona ? <CheckCircle2 size={12} color={PRIMARY_DARK} /> : <Receipt size={12} color="#8A6A1F" />}
+                            {e.fakturaWystawiona ? <CheckCircle2 size={14} color={PRIMARY_DARK} /> : <Receipt size={14} color="#8A6A1F" />}
                           </button>
                           <PaymentStatusMenu status={e.status} onChange={(s) => onSetPaymentStatus(e.id, s)} small />
                         </div>
@@ -3960,34 +3813,6 @@ function PaymentStatusMenu({ status, onChange, small }) {
         </>
       )}
     </div>
-  );
-}
-
-function InvoiceStatusToggle({ issued, onClick, small }) {
-  const dot = small ? 12 : 14;
-  const fontSize = small ? "10px" : "12px";
-  const pad = small ? "1.5px 8px 1.5px 5px" : "3.5px 10px 3.5px 6px";
-  const issuedColor = { bg: "#E4F3EC", border: "#639922", text: PRIMARY_DARK };
-  const pendingColor = { bg: "#FDF6E9", border: "#EF9F27", text: "#8A6A1F" };
-  const c = issued ? issuedColor : pendingColor;
-  return (
-    <button
-      onClick={onClick}
-      className="flex-shrink-0 inline-flex items-center gap-1.5 font-semibold rounded-full transition hover:opacity-80"
-      style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, fontSize, padding: pad }}
-    >
-      <span
-        className="flex-shrink-0 flex items-center justify-center rounded-full"
-        style={{
-          width: dot, height: dot,
-          border: issued ? "none" : `1.5px solid ${c.text}`,
-          background: issued ? c.border : "transparent",
-        }}
-      >
-        {issued && <Check size={dot - 5} color="white" strokeWidth={3.5} />}
-      </span>
-      {issued ? "Wystawiona" : "Do wystawienia"}
-    </button>
   );
 }
 
@@ -4140,34 +3965,6 @@ function MonthlyTable({ months, totals }) {
 /* ------------------------------------------------------------------ */
 /* Entry Form Modal                                                     */
 /* ------------------------------------------------------------------ */
-function TimeSelect({ value, onChange }) {
-  const [hh, mm] = (value || "").split(":");
-  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-  const minutes = ["00", "15", "30", "45"];
-  return (
-    <div className="flex gap-2">
-      <select
-        className={inputCls}
-        style={{ borderColor: LINE_COLOR }}
-        value={hh || ""}
-        onChange={(e) => onChange(`${e.target.value}:${mm || "00"}`)}
-      >
-        <option value="">GG</option>
-        {hours.map((h) => <option key={h} value={h}>{h}</option>)}
-      </select>
-      <select
-        className={inputCls}
-        style={{ borderColor: LINE_COLOR }}
-        value={mm || ""}
-        onChange={(e) => onChange(`${hh || "00"}:${e.target.value}`)}
-      >
-        <option value="">MM</option>
-        {minutes.map((m) => <option key={m} value={m}>{m}</option>)}
-      </select>
-    </div>
-  );
-}
-
 function FormField({ label, children, align }) {
   return (
     <label className="block">
@@ -4194,7 +3991,7 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
           <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.15rem", fontWeight: 600, color: PRIMARY_DARK }}>
             {isEditing ? (formType === "full" ? "Edytuj wpis" : formType === "zakup" ? "Edytuj wydatek" : formType === "prywatne" ? "Edytuj termin prywatny" : "Edytuj zlecenie") : titles[formType]}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>
 
         <div className="p-5 space-y-5">
@@ -4329,15 +4126,15 @@ function EntryFormModal({ form, isEditing, formType, knownClients, onChange, onC
               <button
                 type="button"
                 onClick={() => onChange("fakturaVat", !form.fakturaVat)}
-                className="flex items-center gap-2.5 text-sm"
+                className="flex items-center gap-2.5 text-sm py-1"
                 style={{ color: "#5B6E67" }}
               >
                 {form.fakturaVat ? (
-                  <span className="flex-shrink-0 rounded-full flex items-center justify-center" style={{ width: 20, height: 20, background: PRIMARY }}>
-                    <Check size={12} color="white" strokeWidth={3} />
+                  <span className="flex-shrink-0 rounded-full flex items-center justify-center" style={{ width: 26, height: 26, background: PRIMARY }}>
+                    <Check size={16} color="white" strokeWidth={3} />
                   </span>
                 ) : (
-                  <span className="flex-shrink-0 rounded-full" style={{ width: 20, height: 20, border: `1.5px solid ${LINE_COLOR}` }} />
+                  <span className="flex-shrink-0 rounded-full" style={{ width: 26, height: 26, border: `1.5px solid ${LINE_COLOR}` }} />
                 )}
                 Potrzebna Faktura VAT
               </button>
@@ -4489,7 +4286,7 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
           <h3 className="flex items-center gap-2 capitalize" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
             {dateStr && weekdayName(dateStr)}, {dateLabel}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>
 
         <div className="flex gap-2 px-5 pt-3 flex-shrink-0">
@@ -4537,26 +4334,21 @@ function DayDetailModal({ dateStr, entries, onEdit, onAddNew, onDelete, onSetSta
                       {(() => { const amt = Number(isZakup || isPrivate ? e.wydatki : e.zarobki) || 0; return amt ? fmtPLN(amt) : "—"; })()}
                     </div>
                     <div className="flex items-center gap-0.5 flex-shrink-0 ml-auto">
+                      <button onClick={() => onDelete(e.id)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                        <Trash2 size={16} color={CORAL} />
+                      </button>
                       {isPlanned && (
-                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
-                          <CheckCircle2 size={15} color={PRIMARY} />
+                        <button onClick={() => onMarkDone(e)} className="p-2 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
+                          <CheckCircle2 size={17} color={PRIMARY} />
                         </button>
                       )}
                       {!isZakup && !isCancelled && (
-                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
-                          <Ban size={15} color="#8CA098" />
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
+                          <Ban size={17} color="#8CA098" />
                         </button>
                       )}
-                      {!isCancelled && (
-                        <button onClick={() => onMove(e)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                          <Move size={14} color="#2A5C8A" />
-                        </button>
-                      )}
-                      <button onClick={() => onEdit(e)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
-                      </button>
-                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                        <Trash2 size={14} color={CORAL} />
+                      <button onClick={() => onEdit(e)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={16} color="#5B6E67" />
                       </button>
                     </div>
                   </div>
@@ -4599,7 +4391,7 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
           <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: cfg.color }}>
             <Icon size={17} /> {cfg.title}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>
 
         {total !== null && (
@@ -4643,14 +4435,11 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-2">
-                      <button onClick={() => onMoveFreeDay(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                        <Move size={14} color="#2A5C8A" />
+                      <button onClick={() => onEditFreeDay(g)} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={16} color="#5B6E67" />
                       </button>
-                      <button onClick={() => onEditFreeDay(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
-                      </button>
-                      <button onClick={() => onRemoveFreeDay(g.ids)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
-                        <Trash2 size={14} color={CORAL} />
+                      <button onClick={() => onRemoveFreeDay(g.ids)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
+                        <Trash2 size={16} color={CORAL} />
                       </button>
                     </div>
                   </div>
@@ -4687,36 +4476,31 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
                       </div>
                     </div>
                     <div className="flex items-center gap-1 mt-2">
+                      <button onClick={() => onDelete(e.id)} className="p-2 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
+                        <Trash2 size={16} color={CORAL} />
+                      </button>
                       {(type === "oczekujacePlatnosci" || type === "fakturyNiezaplacone") && onSetPaymentStatus && (
-                        <button onClick={() => onSetPaymentStatus(e.id, "Zapłacono")} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako zapłacone">
-                          <CheckCircle2 size={15} color={PRIMARY} />
+                        <button onClick={() => onSetPaymentStatus(e.id, "Zapłacono")} className="p-2 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako zapłacone">
+                          <CheckCircle2 size={17} color={PRIMARY} />
                         </button>
                       )}
                       {type === "fakturyDoWystawienia" && onToggleInvoice && (
-                        <button onClick={() => onToggleInvoice(e.id)} className="p-1.5 rounded-md border hover:bg-amber-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz fakturę jako wystawioną">
-                          <Receipt size={14} color="#8A6A1F" />
+                        <button onClick={() => onToggleInvoice(e.id)} className="p-2 rounded-md border hover:bg-amber-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz fakturę jako wystawioną">
+                          <Receipt size={16} color="#8A6A1F" />
                         </button>
                       )}
                       {isPlanned && (
-                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
-                          <CheckCircle2 size={15} color={PRIMARY} />
+                        <button onClick={() => onMarkDone(e)} className="p-2 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
+                          <CheckCircle2 size={17} color={PRIMARY} />
                         </button>
                       )}
                       {!isZakup && !isCancelled && (
-                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
-                          <Ban size={15} color="#8CA098" />
+                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj zlecenie">
+                          <Ban size={17} color="#8CA098" />
                         </button>
                       )}
-                      {!isCancelled && (
-                        <button onClick={() => { onMove(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                          <Move size={14} color="#2A5C8A" />
-                        </button>
-                      )}
-                      <button onClick={() => { onEdit(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
-                      </button>
-                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                        <Trash2 size={14} color={CORAL} />
+                      <button onClick={() => { onEdit(e); onClose(); }} className="p-2 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
+                        <Pencil size={16} color="#5B6E67" />
                       </button>
                     </div>
                   </div>
@@ -4724,46 +4508,6 @@ function KpiDetailModal({ type, entries, freeDays, onEdit, onDelete, onSetStatus
               })}
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MoveModal({ moveInfo, onChange, onClose, onSave }) {
-  const label = moveInfo.klient || moveInfo.opisWydatkow || "wpis";
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
-      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
-          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
-            Przenieś termin
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <p className="text-sm" style={{ color: "#5B6E67" }}>
-            Przenosisz termin: <strong style={{ color: INK }}>{label}</strong>
-          </p>
-          <FormField label="Nowa data">
-            <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={moveInfo.newDate} onChange={(e) => onChange("newDate", e.target.value)} />
-          </FormField>
-          <FormField label="Nowa godzina (opcjonalnie)">
-            <input type="time" className={inputCls} style={{ borderColor: LINE_COLOR }} value={moveInfo.newTime} onChange={(e) => onChange("newTime", e.target.value)} />
-          </FormField>
-        </div>
-        <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
-            Anuluj
-          </button>
-          <button
-            onClick={onSave}
-            disabled={!moveInfo.newDate}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
-            style={{ background: "#2A5C8A" }}
-          >
-            Przenieś
-          </button>
         </div>
       </div>
     </div>
@@ -4779,7 +4523,7 @@ function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImport
           <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIMARY_DARK }}>
             <Shield size={17} /> Kopie zapasowe
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto flex-1">
@@ -4913,232 +4657,6 @@ function BackupsPanel({ backups, loading, error, hasFirebase, onExport, onImport
   );
 }
 
-function PrivateListModal({ entries, year, onAddNew, onEdit, onDelete, onSetStatus, onMarkDone, onMove, onClose }) {
-  const [monthIdx, setMonthIdx] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() === year ? now.getMonth() : 0;
-  });
-  const items = useMemo(
-    () => entries
-      .filter((e) => e.typWpisu === "prywatne" && e.data && e.data.startsWith(`${year}-${String(monthIdx + 1).padStart(2, "0")}`))
-      .sort(compareEntries),
-    [entries, year, monthIdx]
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
-      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
-          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: PRIVATE_PURPLE }}>
-            <Clock size={17} /> Terminy prywatne <span style={{ color: "#8CA098", fontWeight: 400, fontSize: "1rem" }}>{year}</span>
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
-        </div>
-
-        <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
-          <button
-            onClick={onAddNew}
-            className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold"
-            style={{ background: "#EEEDFE", color: PRIVATE_PURPLE, border: "1px solid #CECBF6" }}
-          >
-            + Zaplanuj termin prywatny
-          </button>
-        </div>
-
-        <div className="px-5 py-2.5 border-b flex items-center justify-center gap-2 flex-shrink-0" style={{ borderColor: LINE_COLOR, background: "#FAFBFA" }}>
-          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronLeft size={15} color={PRIVATE_PURPLE} />
-          </button>
-          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: PRIVATE_PURPLE, fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
-          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronRight size={15} color={PRIVATE_PURPLE} />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1">
-          {items.length === 0 ? (
-            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak terminów prywatnych w tym miesiącu.</div>
-          ) : (
-            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-              {items.map((e) => {
-                const isOverdue = e.statusZlecenia === "Zaplanowane" && e.data < todayStr();
-                const isCancelled = e.statusZlecenia === "Odwołane";
-                const isPlanned = e.statusZlecenia === "Zaplanowane";
-                return (
-                  <div key={e.id} className="px-5 py-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: isOverdue ? CORAL : PRIVATE_PURPLE, minWidth: 56 }}>
-                        {e.data.slice(8, 10)}.{e.data.slice(5, 7)}
-                      </div>
-                      <button onClick={() => { onEdit(e); onClose(); }} className="flex-1 min-w-[120px] text-left hover:opacity-70 transition">
-                        <div className="flex items-center gap-1.5">
-                          <div className="text-sm font-medium truncate" style={{ color: PRIVATE_PURPLE }}>{e.klient || e.opisWydatkow || "—"}</div>
-                          {isOverdue && (
-                            <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#FCE9E7", color: CORAL }}>
-                              <AlertTriangle size={9} /> Zaległe
-                            </span>
-                          )}
-                        </div>
-                        {e.adres && <div className="text-xs truncate" style={{ color: "#8CA098" }}>{e.adres}</div>}
-                      </button>
-                      {Number(e.wydatki) > 0 && (
-                        <div style={{ fontFamily: MONO_FONT, fontWeight: 600, color: PRIVATE_PURPLE, flexShrink: 0 }}>
-                          {fmtPLN(Number(e.wydatki))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 mt-2">
-                      {isPlanned && (
-                        <button onClick={() => onMarkDone(e)} className="p-1.5 rounded-md border hover:bg-emerald-50 transition" style={{ borderColor: LINE_COLOR }} title="Oznacz jako wykonane">
-                          <CheckCircle2 size={15} color={PRIMARY} />
-                        </button>
-                      )}
-                      {!isCancelled && (
-                        <button onClick={() => onSetStatus(e.id, "Odwołane")} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Odwołaj termin">
-                          <Ban size={15} color="#8CA098" />
-                        </button>
-                      )}
-                      {!isCancelled && (
-                        <button onClick={() => { onMove(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                          <Move size={14} color="#2A5C8A" />
-                        </button>
-                      )}
-                      <button onClick={() => { onEdit(e); onClose(); }} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
-                      </button>
-                      <button onClick={() => onDelete(e.id)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń">
-                        <Trash2 size={14} color={CORAL} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FreeDaysListModal({ freeDays, year, onAddNew, onEdit, onMove, onRemove, onClose }) {
-  const [monthIdx, setMonthIdx] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() === year ? now.getMonth() : 0;
-  });
-  const allGroups = useMemo(() => groupConsecutiveFreeDays(freeDays, year), [freeDays, year]);
-  const groups = useMemo(
-    () => allGroups.filter((g) => new Date(g.startDate + "T00:00:00").getMonth() === monthIdx),
-    [allGroups, monthIdx]
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
-      <div className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
-          <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: "#8A6A1F" }}>
-            <Umbrella size={17} /> Dni wolne <span style={{ color: "#8CA098", fontWeight: 400, fontSize: "1rem" }}>{year}</span>
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
-        </div>
-
-        <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: LINE_COLOR }}>
-          <button
-            onClick={onAddNew}
-            className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold"
-            style={{ background: "#FDF6E9", color: "#8A6A1F", border: "1px solid #EED9A8" }}
-          >
-            + Zaplanuj dzień wolny
-          </button>
-        </div>
-
-        <div className="px-5 py-2.5 border-b flex items-center justify-center gap-2 flex-shrink-0" style={{ borderColor: LINE_COLOR, background: "#FAFBFA" }}>
-          <button onClick={() => setMonthIdx((m) => Math.max(0, m - 1))} disabled={monthIdx === 0} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronLeft size={15} color="#8A6A1F" />
-          </button>
-          <span className="text-sm font-semibold min-w-[90px] text-center" style={{ color: "#8A6A1F", fontFamily: DISPLAY_FONT }}>{MONTH_NAMES[monthIdx]}</span>
-          <button onClick={() => setMonthIdx((m) => Math.min(11, m + 1))} disabled={monthIdx === 11} className="p-1 rounded-md border disabled:opacity-30 hover:bg-gray-50 transition" style={{ borderColor: LINE_COLOR }}>
-            <ChevronRight size={15} color="#8A6A1F" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1">
-          {groups.length === 0 ? (
-            <div className="p-8 text-center text-sm" style={{ color: "#8CA098" }}>Brak zaplanowanych dni wolnych w tym miesiącu.</div>
-          ) : (
-            <div className="divide-y" style={{ borderColor: LINE_COLOR }}>
-              {groups.map((g) => {
-                const isRange = g.startDate !== g.endDate;
-                return (
-                  <div key={g.ids[0]} className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="capitalize" style={{ fontFamily: MONO_FONT, fontSize: "0.85rem", fontWeight: 600, color: "#8A6A1F", minWidth: isRange ? 140 : 100 }}>
-                        {isRange
-                          ? `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} – ${g.endDate.slice(8, 10)}.${g.endDate.slice(5, 7)}`
-                          : `${g.startDate.slice(8, 10)}.${g.startDate.slice(5, 7)} · ${weekdayName(g.startDate).slice(0, 3)}`}
-                      </div>
-                      <div className="flex-1 text-sm truncate" style={{ color: INK }}>{g.opis || "—"}</div>
-                      {isRange && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "#FDF6E9", color: "#8A6A1F" }}>
-                          {g.ids.length} dni
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 mt-2">
-                      <button onClick={() => onMove(g)} className="p-1.5 rounded-md border hover:bg-sky-50 transition" style={{ borderColor: LINE_COLOR }} title="Przenieś termin">
-                        <Move size={14} color="#2A5C8A" />
-                      </button>
-                      <button onClick={() => onEdit(g)} className="p-1.5 rounded-md border hover:bg-gray-100 transition" style={{ borderColor: LINE_COLOR }} title="Edytuj">
-                        <Pencil size={14} color="#5B6E67" />
-                      </button>
-                      <button onClick={() => onRemove(g)} className="p-1.5 rounded-md border hover:bg-red-50 transition" style={{ borderColor: LINE_COLOR }} title="Usuń dzień wolny">
-                        <Trash2 size={14} color={CORAL} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FreeDayMoveModal({ date, onChange, onClose, onSave }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
-      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" style={{ background: SURFACE }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: LINE_COLOR }}>
-          <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: "#2A5C8A" }}>
-            Przenieś dzień wolny
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
-        </div>
-        <div className="p-5">
-          <FormField label="Nowa data">
-            <input type="date" className={inputCls} style={{ borderColor: LINE_COLOR }} value={date} onChange={(e) => onChange(e.target.value)} />
-          </FormField>
-        </div>
-        <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: LINE_COLOR }}>
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border" style={{ borderColor: LINE_COLOR, color: "#5B6E67" }}>
-            Anuluj
-          </button>
-          <button
-            onClick={onSave}
-            disabled={!date}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
-            style={{ background: "#2A5C8A" }}
-          >
-            Przenieś
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function FreeDayModal({ form, isEditing, onChange, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(28,43,39,0.45)" }}>
@@ -5147,7 +4665,7 @@ function FreeDayModal({ form, isEditing, onChange, onClose, onSave }) {
           <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: "#8A6A1F" }}>
             {isEditing ? "Edytuj dzień wolny" : "Zaplanuj dzień wolny"}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -5189,7 +4707,7 @@ function MarkDoneModal({ entry, form, onChange, onConfirm, onCancel }) {
           <h3 className="flex items-center gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.1rem", fontWeight: 600, color: isPrivate ? PRIVATE_PURPLE : PRIMARY_DARK }}>
             <CheckCircle2 size={17} color={isPrivate ? PRIVATE_PURPLE : PRIMARY} /> Oznacz jako wykonane
           </h3>
-          <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onCancel} className="p-2 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>
         <div className="p-5 space-y-4">
           <p className="text-sm" style={{ color: "#5B6E67" }}>
