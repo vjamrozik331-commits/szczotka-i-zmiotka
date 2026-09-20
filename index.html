@@ -2254,8 +2254,11 @@ function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendar
 
   return (
     <div className="space-y-5">
-      <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK }}>
+      <h2 className="flex items-baseline gap-2" style={{ fontFamily: DISPLAY_FONT, fontSize: "1.6rem", fontWeight: 600, color: PRIMARY_DARK, whiteSpace: "nowrap", overflow: "hidden" }}>
         {monthName} <span style={{ color: "#8CA098", fontSize: "1.1rem" }}>{year}</span>
+        <span style={{ color: "#8CA098", fontSize: "0.9rem", fontWeight: 400, overflow: "hidden", textOverflow: "ellipsis" }}>
+          · {summary.liczbaZlecen + summary.zaplanowaneLiczba} zleceń · {fmtPLN(summary.zarobki + summary.zaplanowaneZarobki)}
+        </span>
       </h2>
 
       <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 sm:flex-wrap">
