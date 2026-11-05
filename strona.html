@@ -923,7 +923,14 @@
   // strona zawsze otwiera się od samej góry (przeglądarka na iPhonie potrafi przywrócić stare przewinięcie)
   if (!location.hash) {
     try { history.scrollRestoration = "manual"; } catch (e) {}
-    const toTop = () => window.scrollTo(0, 0);
+    // html ma scroll-behavior:smooth — tu przewijamy natychmiast, bez widocznego "jeżdżenia" strony
+    const toTop = () => {
+      const h = document.documentElement, prev = h.style.scrollBehavior;
+      h.style.scrollBehavior = "auto";
+      void h.offsetHeight; // wymusza zastosowanie stylu przed przewinięciem
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      h.style.scrollBehavior = prev;
+    };
     toTop();
     window.addEventListener("load", () => { toTop(); setTimeout(toTop, 150); setTimeout(toTop, 600); });
   }
@@ -942,7 +949,8 @@
       const y = ok.getBoundingClientRect().top + (window.pageYOffset || 0) - off;
       const prev = html.style.scrollBehavior;
       html.style.scrollBehavior = "auto";
-      window.scrollTo(0, Math.max(0, y));
+      void html.offsetHeight;
+      window.scrollTo({ top: Math.max(0, y), left: 0, behavior: "instant" });
       html.style.scrollBehavior = prev;
     };
     go();
