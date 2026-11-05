@@ -885,11 +885,25 @@
 
   const PAGE_LOADED = Date.now();
   function showSuccess(){
+    // schowaj klawiaturę (iPhone), żeby układ strony się ustabilizował
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     document.getElementById("bookingFormWrap").style.display = "none";
     const ok = document.getElementById("bookingSuccess");
     ok.style.display = "block";
-    // po ukryciu formularza strona się skraca — przewiń do komunikatu, żeby był widoczny
-    requestAnimationFrame(() => { ok.scrollIntoView({ behavior: "smooth", block: "center" }); });
+    const html = document.documentElement;
+    const go = () => {
+      // przewiń natychmiast (bez animacji) tak, by komunikat był tuż pod przyklejonym nagłówkiem
+      const hdr = document.querySelector("header.site");
+      const off = (hdr ? hdr.offsetHeight : 0) + 16;
+      const y = ok.getBoundingClientRect().top + (window.pageYOffset || 0) - off;
+      const prev = html.style.scrollBehavior;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo(0, Math.max(0, y));
+      html.style.scrollBehavior = prev;
+    };
+    go();
+    // powtórki: na iPhonie układ zmienia się jeszcze po zamknięciu klawiatury
+    [150, 400, 800].forEach((t) => setTimeout(go, t));
   }
   const form = document.getElementById("bookingForm");
   form.addEventListener("submit", function(e){
