@@ -920,6 +920,13 @@
     renderCalendar();
   }
 
+  // strona zawsze otwiera się od samej góry (przeglądarka na iPhonie potrafi przywrócić stare przewinięcie)
+  if (!location.hash) {
+    try { history.scrollRestoration = "manual"; } catch (e) {}
+    const toTop = () => window.scrollTo(0, 0);
+    toTop();
+    window.addEventListener("load", () => { toTop(); setTimeout(toTop, 150); setTimeout(toTop, 600); });
+  }
   const PAGE_LOADED = Date.now();
   function showSuccess(){
     // schowaj klawiaturę (iPhone), żeby układ strony się ustabilizował
