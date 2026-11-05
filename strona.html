@@ -358,7 +358,7 @@
   </div>
 </header>
 
-<main id="top">
+<main id="glowna">
 
   <section class="hero">
     <div class="hero-inner">
@@ -921,6 +921,7 @@
   }
 
   // strona zawsze otwiera się od samej góry (przeglądarka na iPhonie potrafi przywrócić stare przewinięcie)
+  if (location.hash === "#top") { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} } // stary link z #top
   if (!location.hash) {
     try { history.scrollRestoration = "manual"; } catch (e) {}
     // html ma scroll-behavior:smooth — tu przewijamy natychmiast, bez widocznego "jeżdżenia" strony
