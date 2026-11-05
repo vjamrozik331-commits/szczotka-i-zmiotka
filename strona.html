@@ -257,7 +257,7 @@
   .slot-note{font-family:var(--mono); font-size:0.78rem; color:#8CA098; margin-top:10px;}
   .booking-form label{display:block; font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:#5C766C; margin-bottom:6px; margin-top:15px; font-weight:600;}
   .booking-form label:first-child{margin-top:0;}
-  .booking-form input, .booking-form select, .booking-form textarea{width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font-family:var(--body); font-size:0.95rem; color:var(--ink); background:var(--bg);}
+  .booking-form input, .booking-form select, .booking-form textarea{width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font-family:var(--body); font-size:16px; color:var(--ink); background:var(--bg);} /* min. 16px — iPhone nie powiększa strony po kliknięciu w pole */
   .booking-form textarea{resize:vertical; min-height:64px;}
   .booking-form input:focus, .booking-form select:focus, .booking-form textarea:focus{outline:2px solid var(--primary); outline-offset:1px;}
   .selected-date-chip{font-family:var(--mono); font-size:0.83rem; background:var(--coral-soft); color:var(--coral); border-radius:10px; padding:10px 14px; margin-top:16px; display:flex; align-items:center; justify-content:space-between;}
@@ -265,7 +265,7 @@
   .btn-submit:disabled{opacity:0.5; cursor:not-allowed;}
   .form-note{font-size:0.76rem; color:#8CA098; margin-top:12px; line-height:1.5; text-align:left;}
   .form-error{font-size:0.85rem; color:var(--coral); margin-top:12px;}
-  .booking-success{text-align:center; padding:30px 10px;}
+  .booking-success{text-align:center; padding:30px 10px; scroll-margin-top:90px;}
   .booking-success .icon-ok{width:52px; height:52px; border-radius:50%; background:var(--primary-soft); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 18px; font-size:1.4rem;}
   .booking-success h3{font-family:var(--display); color:var(--primary); font-size:1.25rem; margin:0 0 10px;}
   .booking-success p{color:#4A6259; font-size:0.92rem; line-height:1.55; margin:0;}
@@ -884,6 +884,13 @@
   }
 
   const PAGE_LOADED = Date.now();
+  function showSuccess(){
+    document.getElementById("bookingFormWrap").style.display = "none";
+    const ok = document.getElementById("bookingSuccess");
+    ok.style.display = "block";
+    // po ukryciu formularza strona się skraca — przewiń do komunikatu, żeby był widoczny
+    requestAnimationFrame(() => { ok.scrollIntoView({ behavior: "smooth", block: "center" }); });
+  }
   const form = document.getElementById("bookingForm");
   form.addEventListener("submit", function(e){
     e.preventDefault();
@@ -891,8 +898,7 @@
     const honey = document.getElementById("bfWeb");
     if ((honey && honey.value) || (Date.now() - PAGE_LOADED) < 4000) {
       // prawdopodobnie bot — udajemy sukces, nic nie zapisując
-      document.getElementById("bookingFormWrap").style.display = "none";
-      document.getElementById("bookingSuccess").style.display = "block";
+      showSuccess();
       return;
     }
     if (!selectedDate || !selectedTime) { bfError.textContent = "Wybierz najpierw termin i godzinę w kalendarzu."; bfError.style.display = "block"; return; }
@@ -934,8 +940,7 @@
       const fmt = (min) => `${pad(Math.floor(min/60))}:${pad(min%60)}`;
       slotsByDate[selectedDate].push({ start: selectedTime, end: fmt(endMin) });
       document.getElementById("successDate").textContent = `${fmtPolishDate(selectedDate)}, ${selectedTime}`;
-      document.getElementById("bookingFormWrap").style.display = "none";
-      document.getElementById("bookingSuccess").style.display = "block";
+      showSuccess();
     }).catch((err) => {
       const code = err && err.code ? ` (${err.code})` : "";
       bfError.textContent = `Nie udało się wysłać prośby${code}. Spróbuj ponownie albo zadzwoń: 537 200 464.`;
