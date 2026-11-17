@@ -861,6 +861,7 @@ function App() {
   const [year, setYear] = useState(DEFAULT_YEAR);
   const [activeTab, setActiveTab] = useState(new Date().getMonth() < 12 ? new Date().getMonth() : 0);
   const [view, setView] = useState("month"); // "month" | "summary" | "upcoming"
+  const [jumpDay, setJumpDay] = useState(null); // data (YYYY-MM-DD) dnia do otwarcia po "Pokaż w kalendarzu"
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formType, setFormType] = useState("klient"); // "klient" | "zakup" | "full"
@@ -1705,7 +1706,9 @@ function App() {
             setWwwQueue((q) => q.slice(1));
             setActiveTab(new Date(dateStr + "T00:00:00").getMonth());
             setYear(new Date(dateStr + "T00:00:00").getFullYear());
+            setSearch("");
             setView("month");
+            setJumpDay(dateStr);
           }}
         />
       )}
@@ -1744,6 +1747,8 @@ function App() {
         {view === "month" && (
           <MonthView
             key={activeTab}
+            jumpDay={jumpDay}
+            onJumpDayConsumed={() => setJumpDay(null)}
             monthName={MONTH_NAMES[activeTab]}
             year={year}
             isCurrentMonth={!isYearSearch && year === new Date().getFullYear() && activeTab === new Date().getMonth()}
@@ -2241,9 +2246,13 @@ function KpiCard({ icon: Icon, label, value, accent, onClick, active }) {
 /* ------------------------------------------------------------------ */
 /* Month View                                                           */
 /* ------------------------------------------------------------------ */
-function MonthView({ monthName, year, isCurrentMonth, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onEditFreeDay, onMoveFreeDay, onGoUpcoming, onSetPaymentStatus, onToggleInvoice }) {
+function MonthView({ jumpDay, onJumpDayConsumed, monthName, year, isCurrentMonth, summary, entries, calendarCells, freeDays, detailLists, search, setSearch, searchScope, setSearchScope, isYearSearch, onAddForDay, onEdit, onDelete, onJumpToMonth, onSetStatus, onMarkDone, onMove, onRemoveFreeDay, onEditFreeDay, onMoveFreeDay, onGoUpcoming, onSetPaymentStatus, onToggleInvoice }) {
   const [detail, setDetail] = useState(null); // "zarobki" | "wydatki" | "zaplanowane" | "wolne" | null
   const [dayDetail, setDayDetail] = useState(null); // { dateStr, entries } | null
+  // Przejście z okienka "Nowe zlecenie ze strony" → "Pokaż w kalendarzu": od razu otwórz dzień
+  useEffect(() => {
+    if (jumpDay) { setDayDetail(jumpDay); if (onJumpDayConsumed) onJumpDayConsumed(); }
+  }, [jumpDay]);
   const [showPast, setShowPast] = useState(false);
 
   const today = todayStr();
