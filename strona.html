@@ -603,7 +603,7 @@
             <div class="slot-grid" id="slotGrid"></div>
             <div class="slot-note" id="slotLimit" style="display:none; color:var(--primary); font-weight:600;"></div>
             <div class="slot-note">Zajęte godziny są wyliczone na podstawie moich obecnych zleceń tego dnia. <strong style="color:var(--primary);">Zlecenie musi zakończyć się najpóźniej o 18:00. Pracę po godzinie 18:00 ustalam indywidualnie, więc w takim przypadku najpierw zadzwoń: <a href="tel:537200464" style="color:inherit; white-space:nowrap;">537 200 464</a>.</strong></div>
-            <div class="slot-note" id="slotNone" style="display:none; color:var(--coral);">Przy wybranym czasie trwania nie ma już wolnej godziny tego dnia — wybierz inny dzień, krótszy czas albo zadzwoń: <a href="tel:537200464">537 200 464</a>.</div>
+            <div class="slot-note" id="slotNone" style="display:none; color:var(--coral);">Brak wolnych terminów w wybranym czasie. Wybierz inny dzień lub krótszy czas, albo zadzwoń: <a href="tel:537200464">537 200 464</a> – postaram się dopasować ☺️</div>
           </div>
         </div>
         <div>
@@ -887,11 +887,7 @@
         selectedChip.innerHTML = "";
         // brak wolnych godzin tego dnia → komunikat w okienku
         if (!dayHasFreeSlot(selectedDate, 0)) {
-          if (!dayHasFreeSlot(selectedDate, 1)) {
-            openFullModal("Tego dnia nie ma już wolnych godzin. Wybierz inny dzień albo zadzwoń.");
-          } else {
-            openFullModal(`Przy wybranym czasie trwania (ok. ${getDurationMin() / 60} h) nie ma już wolnej godziny tego dnia. Wybierz inny dzień, krótszy czas albo zadzwoń.`);
-          }
+          openFullModal("Tego dnia nie ma już wolnych terminów. Zadzwoń, a postaram się dopasować ☺️");
         }
       });
     });
